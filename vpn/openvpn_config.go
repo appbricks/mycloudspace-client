@@ -7,7 +7,7 @@ import (
 type openvpnConfig struct {	
 }
 
-func newOpenVPNConfigFromTarget(tgt *target.Target) (*openvpnConfig, error) {
+func newOpenVPNConfigFromTarget(tgt *target.Target, user, passwd string) (*openvpnConfig, error) {
 	return &openvpnConfig{}, nil
 }
 

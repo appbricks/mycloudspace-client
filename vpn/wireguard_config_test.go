@@ -42,7 +42,7 @@ var _ = Describe("Wireguard Config", func() {
 		It("load wireguard vpn config to connect to a target", func() {
 			testTarget.httpTestSvrExpectedURI = "/~bastion-admin/mycs-test.conf"
 
-			config, err = vpn.NewConfigFromTarget(testTarget.target)
+			config, err = vpn.NewConfigFromTarget(testTarget.target, "bastion-admin", "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(config).ToNot(BeNil())
 			Expect(reflect.TypeOf(config).String()).To(Equal("*vpn.wireguardConfig"))		
@@ -79,6 +79,10 @@ func startTestTarget() *testTarget {
 
 	t.httpTestSvr = httptest.NewUnstartedServer(http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
+			user, passwd, ok := r.BasicAuth()
+			Expect(ok).To(BeTrue())
+			Expect(user).To(Equal("bastion-admin"))
+			Expect(passwd).To(Equal(""))
 			if r.RequestURI != t.httpTestSvrExpectedURI {
 				http.NotFound(w, r)
 				return
@@ -262,8 +266,10 @@ const targets = `[
 								"order": "number",
 								"private_ip": "string",
 								"public_ip": "string",
+								"root_user": "string",
 								"root_passwd": "string",
-								"user_passwd": "string",
+								"non_root_user": "string",
+								"non_root_passwd": "string",
 								"ssh_key": "string",
 								"ssh_port": "string",
 								"ssh_user": "string",
@@ -281,8 +287,10 @@ const targets = `[
 						"order": 0,
 						"private_ip": "127.0.0.1",
 						"public_ip": "127.0.0.1",
+						"root_user": "bastion-admin",
 						"root_passwd": "root_p@ssw0rd",
-						"user_passwd": "user_p@ssw0rd",
+						"non_root_user": "bastion-user",
+						"non_root_passwd": "user_p@ssw0rd",
 						"ssh_key": "",
 						"ssh_port": "22",
 						"ssh_user": "bastion-admin",

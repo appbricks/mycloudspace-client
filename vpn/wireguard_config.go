@@ -29,7 +29,7 @@ type wireguardConfig struct {
 var configSectionPattern = regexp.MustCompile(`\[(.*)\]`)
 var configAttribPattern = regexp.MustCompile(`(^[a-zA-Z0-9\-\_]*)\s*=\s*(.*)`)
 
-func newWireguardConfigFromTarget(tgt *target.Target) (*wireguardConfig, error) {
+func newWireguardConfigFromTarget(tgt *target.Target, user, passwd string) (*wireguardConfig, error) {
 
 	var (
 		err error	
@@ -47,7 +47,7 @@ func newWireguardConfigFromTarget(tgt *target.Target) (*wireguardConfig, error) 
 
 	peerConfig = wgtypes.PeerConfig{}
 
-	if c.configData, err = getVPNConfig(tgt, "bastion-admin"); err != nil {
+	if c.configData, err = getVPNConfig(tgt, user, passwd); err != nil {
 		return nil, err
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(c.configData))

@@ -21,7 +21,10 @@ type Client interface {
 }
 
 // load vpn config for the space target's admin user
-func NewConfigFromTarget(tgt *target.Target) (Config, error) {
+func NewConfigFromTarget(
+	tgt *target.Target, 
+	user, passwd string,
+) (Config, error) {
 
 	var (
 		vpnType string
@@ -37,9 +40,9 @@ func NewConfigFromTarget(tgt *target.Target) (Config, error) {
 	}
 	switch vpnType {
 	case "wireguard":
-		return newWireguardConfigFromTarget(tgt)
+		return newWireguardConfigFromTarget(tgt, user, passwd)
 	case "openvpn":
-		return newOpenVPNConfigFromTarget(tgt)
+		return newOpenVPNConfigFromTarget(tgt, user, passwd)
 	default:
 		return nil, fmt.Errorf(fmt.Sprintf("target vpn type \"%s\" is not supported", vpnType))
 	}
@@ -47,7 +50,7 @@ func NewConfigFromTarget(tgt *target.Target) (Config, error) {
 
 func getVPNConfig(
 	tgt *target.Target, 
-	user string,
+	user, passwd string,
 ) (
 	[]byte,
 	error,
@@ -67,6 +70,7 @@ func getVPNConfig(
 		client *http.Client
 		url    string
 
+		req     *http.Request
 		resp    *http.Response
 		resBody []byte
 	)
@@ -101,7 +105,11 @@ func getVPNConfig(
 		url, user, vpcName,
 	)
 
-	if resp, err = client.Get(url); err != nil {
+	if req, err = http.NewRequest("GET", url, nil); err != nil {
+		return nil, err
+	}
+	req.SetBasicAuth(user, passwd)
+	if resp, err = client.Do(req); err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()

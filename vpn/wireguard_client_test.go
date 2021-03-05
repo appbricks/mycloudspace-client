@@ -46,7 +46,7 @@ var _ = Describe("Wireguard Client", func() {
 			testTarget.stop()
 		})
 
-		FIt("create wireguard vpn client to connect to a target", func() {
+		It("create wireguard vpn client to connect to a target", func() {
 
 			var (
 				tunIfaceName string
@@ -55,7 +55,7 @@ var _ = Describe("Wireguard Client", func() {
 			)
 			
 			testTarget.httpTestSvrExpectedURI = "/~bastion-admin/mycs-test.conf"
-			config, err = vpn.NewConfigFromTarget(testTarget.target)
+			config, err = vpn.NewConfigFromTarget(testTarget.target, "bastion-admin", "")
 			Expect(err).NotTo(HaveOccurred())
 			
 			tunIfaceName, err = network.GetNextAvailabeInterface("utun")
@@ -112,7 +112,7 @@ var _ = Describe("Wireguard Client", func() {
 			}
 			Expect(counter).To(Equal(5))
 
-			time.Sleep(time.Second * 60)
+			// time.Sleep(time.Second * 60)
 
 			err = client.Disconnect()
 			Expect(err).NotTo(HaveOccurred())
