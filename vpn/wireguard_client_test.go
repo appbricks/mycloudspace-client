@@ -7,13 +7,11 @@ import (
 	"net"
 	"reflect"
 	"regexp"
-	"strings"
 	"time"
 
 	homedir "github.com/mitchellh/go-homedir"
 
 	"golang.zx2c4.com/wireguard/wgctrl"
-	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
 	"github.com/appbricks/mycloudspace-client/network"
 	"github.com/appbricks/mycloudspace-client/vpn"
@@ -55,6 +53,11 @@ var _ = Describe("Wireguard Client", func() {
 			)
 			
 			testTarget.httpTestSvrExpectedURI = "/~bastion-admin/mycs-test.conf"
+			
+			// ensure target remotes status is loaded
+			err = testTarget.target.LoadRemoteRefs()
+			Expect(err).NotTo(HaveOccurred())
+
 			config, err = vpn.NewConfigFromTarget(testTarget.target, "bastion-admin", "")
 			Expect(err).NotTo(HaveOccurred())
 			
@@ -78,8 +81,9 @@ var _ = Describe("Wireguard Client", func() {
 			Expect(len(devices)).To(Equal(1))
 			Expect(len((*devices[0]).Peers)).To(Equal(1))
 
-			Expect(printDevice(devices[0])).To(Equal(deviceDetailOutput))
-			Expect(printPeer((*devices[0]).Peers[0])).To(Equal(peerDetailOutput))
+			status, err := client.StatusText()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(status).To(Equal(deviceStatusOutput))
 
 			// TODO: Fix route check to support linux and windows
 
@@ -95,7 +99,7 @@ var _ = Describe("Wireguard Client", func() {
 			var matchRoutes = func(line string) {
 				matched, _ := regexp.MatchString(fmt.Sprintf(`^0/1\s+192.168.111.1\s+UGSc\s+%s\s+$`, tunIfaceName), line)
 				if matched { counter++; return }
-				matched, _ = regexp.MatchString(`^34.204.21.102/32\s+192.168.1.1\s+UGSc\s+en[0-9]\s+$`, line)
+				matched, _ = regexp.MatchString(`^34.204.21.102/32\s+([0-9]+\.?)+\s+UGSc\s+en[0-9]\s+$`, line)
 				if matched { counter++; return }
 				matched, _ = regexp.MatchString(fmt.Sprintf(`^128.0/1\s+192.168.111.1\s+UGSc\s+%s\s+$`, tunIfaceName), line)
 				if matched { counter++; return }
@@ -135,52 +139,11 @@ func checkDevExists(ifaceName string) bool {
 	return false
 }
 
-func printDevice(d *wgtypes.Device) string {
-	const f = `interface: %s (%s)
-  public key: %s
-  private key: (hidden)
-`
-
-	return fmt.Sprintf(
-		f,
-		d.Name,
-		d.Type.String(),
-		d.PublicKey.String())
-}
-
-func printPeer(p wgtypes.Peer) string {
-	const f = `peer: %s
-  endpoint: %s
-  allowed ips: %s
-  latest handshake: %s
-  transfer: %d B received, %d B sent
-`
-
-	return fmt.Sprintf(
-		f,
-		p.PublicKey.String(),
-		p.Endpoint.String(),
-		ipsString(p.AllowedIPs),
-		p.LastHandshakeTime.String(),
-		p.ReceiveBytes,
-		p.TransmitBytes,
-	)
-}
-
-func ipsString(ipns []net.IPNet) string {
-	ss := make([]string, 0, len(ipns))
-	for _, ipn := range ipns {
-		ss = append(ss, ipn.String())
-	}
-
-	return strings.Join(ss, ", ")
-}
-
-const deviceDetailOutput = `interface: utun6 (userspace)
+const deviceStatusOutput = `interface: utun6 (userspace)
   public key: LElaAbWwLh+KE46BOkl9WYvJakalTOYKJXLk2rehUFA=
   private key: (hidden)
-`
-const peerDetailOutput = `peer: AnTKCPYQCkNACBUsB2otfk+V/D3ZiBpNaQJHsSw0hEo=
+
+peer: AnTKCPYQCkNACBUsB2otfk+V/D3ZiBpNaQJHsSw0hEo=
   endpoint: 34.204.21.102:3399
   allowed ips: 0.0.0.0/0
   latest handshake: 0001-01-01 00:00:00 +0000 UTC

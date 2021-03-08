@@ -4,19 +4,23 @@ import (
 	"bufio"
 	"bytes"
 	"fmt"
+	"io/ioutil"
 	"net"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
 	"time"
 
+	qrcode "github.com/skip2/go-qrcode"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 
 	"github.com/appbricks/cloud-builder/target"
 )
 
 type wireguardConfig struct {	
-	configData []byte
+	configFileName string
+	configData     []byte
 
 	tunAddress,
 	tunDNS string
@@ -47,7 +51,7 @@ func newWireguardConfigFromTarget(tgt *target.Target, user, passwd string) (*wir
 
 	peerConfig = wgtypes.PeerConfig{}
 
-	if c.configData, err = getVPNConfig(tgt, user, passwd); err != nil {
+	if c.configFileName, c.configData, err = getVPNConfig(tgt, user, passwd); err != nil {
 		return nil, err
 	}
 	scanner := bufio.NewScanner(bytes.NewReader(c.configData))
@@ -150,4 +154,38 @@ func (c *wireguardConfig) NewClient() (Client, error) {
 
 func (c *wireguardConfig) Config() string {
 	return string(c.configData)
+}
+
+func (c *wireguardConfig) Save(path string) (string, error) {
+	
+	var (
+		err error
+
+		qrCode *qrcode.QRCode
+	)
+	downloadFilePath := filepath.Join(path, c.configFileName)
+	
+	if err = ioutil.WriteFile(downloadFilePath, c.configData, 0644); err != nil {
+		return "", err
+	}
+	if qrCode, err = qrcode.New(string(c.configData), qrcode.Low); err != nil {
+		return "", err
+	}
+	qrCode.DisableBorder = true
+
+	const desc = `The VPN configuration has been downloaded to the file shown below.
+You need import it to the wireguard client via the option "Import
+Tunnels from file...".
+
+%s
+
+Scan the following QR code with the mobile client to configure the
+VPN on you mobile device.
+
+%s`
+	return fmt.Sprintf(
+		desc, 
+		downloadFilePath,
+		qrCode.ToSmallString(false),
+	), nil
 }

@@ -13,11 +13,16 @@ import (
 type Config interface {
 	NewClient() (Client, error)
 	Config() string
+
+	Save(path string) (string, error)
 }
 
 type Client interface {
 	Connect() error
 	Disconnect() error
+	
+	StatusText() (string, error)
+	BytesTransmitted() (int64, int64, error)
 }
 
 // load vpn config for the space target's admin user
@@ -52,6 +57,7 @@ func getVPNConfig(
 	tgt *target.Target, 
 	user, passwd string,
 ) (
+	string,
 	[]byte,
 	error,
 ) {
@@ -65,7 +71,8 @@ func getVPNConfig(
 
 		output terraform.Output
 		
-		vpcName string
+		vpcName,
+		configFileName string
 
 		client *http.Client
 		url    string
@@ -75,50 +82,53 @@ func getVPNConfig(
 		resBody []byte
 	)
 
-	if err = tgt.LoadRemoteRefs(); err != nil {
-		return nil, err
-	}
 	if tgt.Status() != target.Running {
-		// TODO: start target if not running
-		return nil, fmt.Errorf("target is not running")
+		return "", nil, fmt.Errorf("target is not running")
 	}
 
 	instance = tgt.ManagedInstance("bastion")
+	if instance == nil {
+		return "", nil, fmt.Errorf("unable to find a bastion instance to connect to")
+	}
 	if instanceState, err = instance.Instance.State(); err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	if instanceState != cloud.StateRunning {
-		return nil, fmt.Errorf("bastion instance is not running")
+		return "", nil, fmt.Errorf("bastion instance is not running")
 	}
 	if client, url, err = instance.HttpsClient(); err != nil {
-		return nil, err
+		return "", nil, err
 	}
 
 	if output, ok = (*tgt.Output)["cb_vpc_name"]; !ok {
-		return nil, fmt.Errorf("the vpc name was not present in the sandbox build output")
+		return "", nil, fmt.Errorf("the vpc name was not present in the sandbox build output")
 	}
 	if vpcName, ok = output.Value.(string); !ok {
-		return nil, fmt.Errorf("the vpc name retrieved from the build output was not of the correct type")
+		return "", nil, fmt.Errorf("the vpc name retrieved from the build output was not of the correct type")
 	}
+	configFileName = fmt.Sprintf(
+		"%s.conf",
+		vpcName,
+	)
 	url = fmt.Sprintf(
-		"%s/~%s/%s.conf",
-		url, user, vpcName,
+		"%s/~%s/%s",
+		url, user, configFileName,
 	)
 
 	if req, err = http.NewRequest("GET", url, nil); err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	req.SetBasicAuth(user, passwd)
 	if resp, err = client.Do(req); err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		return nil, fmt.Errorf("error retrieving vpn config from bastion instance: %s", resp.Status)
+		return "", nil, fmt.Errorf("error retrieving vpn config from bastion instance: %s", resp.Status)
 	}
 	if resBody, err = io.ReadAll(resp.Body); err != nil {
-		return nil, nil
+		return "", nil, nil
 	}
-	return resBody, nil
+	return configFileName, resBody, nil
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"reflect"
 	"strings"
 
@@ -25,6 +26,8 @@ var _ = Describe("Wireguard Config", func() {
 
 		testTarget *testTarget
 		config     vpn.Config
+
+		downloadPath string
 	)
 
 	Context("load", func() {
@@ -33,21 +36,33 @@ var _ = Describe("Wireguard Config", func() {
 			// test http server to mock bastion HTTPS 
 			// backend for vpn config retrieval
 			testTarget = startTestTarget()
+
+			downloadPath, err = os.MkdirTemp("", "vpn");
+			Expect(err).ToNot(HaveOccurred())
 		})
 
 		AfterEach(func() {
 			testTarget.stop()
+			os.RemoveAll(downloadPath)
 		})
 
 		It("load wireguard vpn config to connect to a target", func() {
 			testTarget.httpTestSvrExpectedURI = "/~bastion-admin/mycs-test.conf"
 
+			// ensure target remotes status is loaded
+			err = testTarget.target.LoadRemoteRefs()
+			Expect(err).NotTo(HaveOccurred())
+
 			config, err = vpn.NewConfigFromTarget(testTarget.target, "bastion-admin", "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(config).ToNot(BeNil())
 			Expect(reflect.TypeOf(config).String()).To(Equal("*vpn.wireguardConfig"))		
-			Expect(config.Config()).To(Equal(WireguardConfig))
-			Expect(testTarget.httpTestSvrErr).NotTo(HaveOccurred())			
+			Expect(config.Config()).To(Equal(wireguardConfig))
+			Expect(testTarget.httpTestSvrErr).NotTo(HaveOccurred())		
+			
+			desc, err := config.Save(downloadPath)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(desc).To(MatchRegexp(fmt.Sprintf(wireguardConfigSave, downloadPath)))
 		})
 	})
 })
@@ -87,7 +102,7 @@ func startTestTarget() *testTarget {
 				http.NotFound(w, r)
 				return
 			}
-			_, t.httpTestSvrErr = w.Write([]byte(WireguardConfig))
+			_, t.httpTestSvrErr = w.Write([]byte(wireguardConfig))
 		},
 	))
 	t.httpTestSvr.TLS = tlsCfg
@@ -219,7 +234,7 @@ U4rVI3W/kuVwR0J5tktkwABk/AbKm3DNH6Te83hHZzRs1k/IDZdlIj7yVu0onx8o
 LWincEnIOudDjPCknB0vrWVhP8sXkw697TKbTwS4mXeZT/yAAqXAjgz2uRf8q8Mm
 9GfIXfQi1yitG1fifTHMPtBjVULgWbKcca/VX8Qr0OHwa5zTEDOkg52Gt34=
 -----END RSA PRIVATE KEY-----`
-const WireguardConfig = `[Interface]
+const wireguardConfig = `[Interface]
 PrivateKey = gCgKmNwxEtBo0Y0oZVgkOABuRBfafoWMk8sb9yiHCGQ=
 Address = 192.168.111.194/32
 DNS = 10.0.16.253
@@ -230,6 +245,15 @@ AllowedIPs = 0.0.0.0/0
 Endpoint = 34.204.21.102:3399
 PersistentKeepalive = 25
 `
+const wireguardConfigSave = `The VPN configuration has been downloaded to the file shown below.
+You need import it to the wireguard client via the option "Import
+Tunnels from file...".
+
+%s/mycs-test.conf
+
+Scan the following QR code with the mobile client to configure the
+VPN on you mobile device.
+.*`
 
 const targets = `[
 	{

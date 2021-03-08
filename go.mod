@@ -16,10 +16,11 @@ require (
 	github.com/appbricks/cloud-builder v0.0.0-00010101000000-000000000000
 	github.com/mevansam/gocloud v0.0.0-00010101000000-000000000000
 	github.com/mevansam/goutils v0.0.0-00010101000000-000000000000
-	github.com/mitchellh/go-homedir v1.1.0 // indirect
+	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.15.0
 	github.com/onsi/gomega v1.10.5
 	github.com/sirupsen/logrus v1.4.2
+	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
 	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83 // indirect
 	golang.org/x/net v0.0.0-20210224082022-3d97a244fca7 // indirect
 	golang.org/x/sys v0.0.0-20210227040730-b0d1d43c014d
