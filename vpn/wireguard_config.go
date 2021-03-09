@@ -174,7 +174,7 @@ func (c *wireguardConfig) Save(path string) (string, error) {
 	qrCode.DisableBorder = true
 
 	const desc = `The VPN configuration has been downloaded to the file shown below.
-You need import it to the wireguard client via the option "Import
+You need import it to the wireguard vpn client via the option "Import
 Tunnels from file...".
 
 %s
