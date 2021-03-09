@@ -31,6 +31,7 @@ func (w *wireguard) configureNetwork() error {
 
 		matches [][]string
 		
+		killall,
 		netstat,
 		networksetup,
 		ifconfig, 
@@ -67,6 +68,9 @@ func (w *wireguard) configureNetwork() error {
 	home, _ = homedir.Dir()
 	null, _ := os.Open(os.DevNull)
 
+	if killall, err = run.NewCLI("/usr/bin/killall", home, &outputBuffer, &outputBuffer); err != nil {
+		return err
+	}
 	if netstat, err = run.NewCLI("/usr/sbin/netstat", home, &outputBuffer, &outputBuffer); err != nil {
 		return err
 	}
@@ -155,6 +159,10 @@ func (w *wireguard) configureNetwork() error {
 	}
 	// set DNS
 	if err = networksetup.Run([]string{ "-setdnsservers", w.sysDevName, w.cfg.tunDNS }); err != nil {
+		return err
+	}
+	// flush DNS cache
+	if err = killall.Run([]string{ "-HUP", "mDNSResponder" }); err != nil {
 		return err
 	}
 
