@@ -5,7 +5,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"regexp"
 	"runtime"
 	"strings"
 	"syscall"
@@ -39,10 +38,10 @@ type wireguard struct {
 	term         chan os.Signal
 	disconnected chan bool
 
+	sysDevName string
+
 	err error
 }
-
-var defaultGatewayPattern = regexp.MustCompile(`^default\s+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\s+`)
 
 func newWireguardClient(cfg *wireguardConfig) (*wireguard, error) {
 	return &wireguard{
@@ -152,7 +151,7 @@ func (w *wireguard) Connect() error {
 		}		
 		deviceLogger.Info.Println("Shutting down wireguard tunnel")
 
-		w.cleanupNetwork()
+		w.cleanupNetwork(false)
 		if err = w.uapi.Close(); err != nil {
 			logger.DebugMessage("Error closing UAPI socket: %s", err.Error())
 		}
@@ -186,7 +185,7 @@ func (w *wireguard) Disconnect() error {
 			logger.DebugMessage(
 				"Timed out waiting for VPN disconnect signal. Most likely connection was not established.",
 			)
-			w.cleanupNetwork()
+			w.cleanupNetwork(false)
 	}
 	return nil
 }
