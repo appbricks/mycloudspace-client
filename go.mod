@@ -14,6 +14,10 @@ replace github.com/mevansam/goutils => ../../mevansam/goutils
 
 require (
 	github.com/appbricks/cloud-builder v0.0.0-00010101000000-000000000000
+	github.com/google/uuid v1.2.0 // indirect
+	github.com/hasura/go-graphql-client v0.2.0
+	github.com/klauspost/compress v1.13.0 // indirect
+	github.com/lestrrat-go/jwx v1.2.1
 	github.com/mevansam/gocloud v0.0.0-00010101000000-000000000000
 	github.com/mevansam/goutils v0.0.0-00010101000000-000000000000
 	github.com/mitchellh/go-homedir v1.1.0
@@ -21,9 +25,10 @@ require (
 	github.com/onsi/gomega v1.10.5
 	github.com/sirupsen/logrus v1.4.2
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
-	golang.org/x/crypto v0.0.0-20210220033148-5ea612d1eb83 // indirect
-	golang.org/x/net v0.0.0-20210224082022-3d97a244fca7 // indirect
-	golang.org/x/sys v0.0.0-20210227040730-b0d1d43c014d
+	golang.org/x/net v0.0.0-20210525063256-abc453219eb5 // indirect
+	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c
+	golang.org/x/sys v0.0.0-20210503173754-0981d6026fa6
 	golang.zx2c4.com/wireguard v0.0.20201118
-	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20200609130330-bd2cb7843e1b
+	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210506160403-92e472f520a5
+	nhooyr.io/websocket v1.8.7 // indirect
 )
