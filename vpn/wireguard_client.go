@@ -10,9 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"golang.org/x/sys/unix"
+	"golang.zx2c4.com/wireguard/conn"
 	"golang.zx2c4.com/wireguard/device"
-	"golang.zx2c4.com/wireguard/ipc"
 	"golang.zx2c4.com/wireguard/tun"
 	"golang.zx2c4.com/wireguard/wgctrl"
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -59,14 +58,13 @@ func (w *wireguard) Connect() error {
 		err error
 
 		tunIfaceName string
-		fileUAPI     *os.File
 		wgClient     *wgctrl.Client
 	)
 
 	logLevel := func() int {
 		switch log.GetLevel() {
 		case log.TraceLevel, log.DebugLevel:
-			return device.LogLevelDebug
+			return device.LogLevelVerbose
 		case log.ErrorLevel:
 			return device.LogLevelError
 		case log.InfoLevel:
@@ -92,44 +90,20 @@ func (w *wireguard) Connect() error {
 	if tunIfaceName, err = w.tunnel.Name(); err == nil {
 		w.ifaceName = tunIfaceName
 	}
-	// open UAPI file
-	if fileUAPI, err = ipc.UAPIOpen(w.ifaceName); err != nil {
-		logger.DebugMessage("UAPI listen error: %s", err.Error())
-		return err
-	}
 
 	deviceLogger := device.NewLogger(
 		logLevel,
 		fmt.Sprintf("(%s) ", w.ifaceName),
 	)
-	deviceLogger.Info.Println("Starting mycs wireguard tunnel")
+	deviceLogger.Verbosef("Starting mycs wireguard tunnel")
 
-	w.device = device.NewDevice(w.tunnel, deviceLogger)
-	deviceLogger.Info.Println("Device started")
+	w.device = device.NewDevice(w.tunnel, conn.NewDefaultBind(), deviceLogger)
+	deviceLogger.Verbosef("Device started")
 
-	if w.uapi, err = ipc.UAPIListen(w.ifaceName, fileUAPI); err != nil {
-		deviceLogger.Error.Printf("Failed to listen on UAPI socket: %v", err)
+	if err = w.startUAPI(deviceLogger); err != nil {
 		return err
 	}
-	deviceLogger.Info.Println("UAPI listener started")
-
-	// listen for control data on UAPI IPC socket
-	go func() {		
-		for {
-			conn, err := w.uapi.Accept()
-			if err != nil {
-				deviceLogger.Info.Println("UAPI listener stopped")
-				if err == unix.EBADF {
-					w.errs<-nil
-				} else {
-					w.errs <- err
-				}
-				return
-			}
-			go w.device.IpcHandle(conn)
-		}
-	}()
-
+	
 	// handle termination of services
 	go func() {
 		var (
@@ -149,7 +123,7 @@ func (w *wireguard) Connect() error {
 			case w.err = <-w.errs:
 			case <-w.device.Wait():
 		}		
-		deviceLogger.Info.Println("Shutting down wireguard tunnel")
+		deviceLogger.Verbosef("Shutting down wireguard tunnel")
 
 		w.cleanupNetwork(false)
 		if err = w.uapi.Close(); err != nil {

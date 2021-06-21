@@ -11,6 +11,9 @@ import (
 	"regexp"
 
 	homedir "github.com/mitchellh/go-homedir"
+	"golang.org/x/sys/unix"
+	"golang.zx2c4.com/wireguard/device"
+	"golang.zx2c4.com/wireguard/ipc"
 
 	"github.com/appbricks/mycloudspace-client/network"
 	"github.com/mevansam/goutils/logger"
@@ -18,6 +21,46 @@ import (
 )
 
 var defaultGatewayPattern = regexp.MustCompile(`^default\s+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)\s+\S+\s+(\S+[0-9]+)`)
+
+func (w *wireguard) startUAPI(deviceLogger *device.Logger) error {
+
+	var (
+		err error
+
+		fileUAPI *os.File
+	)
+
+	// open UAPI file
+	if fileUAPI, err = ipc.UAPIOpen(w.ifaceName); err != nil {
+		logger.DebugMessage("UAPI listen error: %s", err.Error())
+		return err
+	}
+	// listen for UAPI IPC
+	if w.uapi, err = ipc.UAPIListen(w.ifaceName, fileUAPI); err != nil {
+		deviceLogger.Errorf("Failed to listen on UAPI socket: %v", err)
+		return err
+	}
+	deviceLogger.Verbosef("UAPI listener started")
+
+	// listen for control data on UAPI IPC socket
+	go func() {		
+		for {
+			conn, err := w.uapi.Accept()
+			if err != nil {
+				deviceLogger.Verbosef("UAPI listener stopped")
+				if err == unix.EBADF {
+					w.errs<-nil
+				} else {
+					w.errs <- err
+				}
+				return
+			}
+			go w.device.IpcHandle(conn)
+		}
+	}()
+
+	return nil
+}
 
 func (w *wireguard) configureNetwork() error {
 

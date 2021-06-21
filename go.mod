@@ -28,7 +28,7 @@ require (
 	golang.org/x/net v0.0.0-20210525063256-abc453219eb5 // indirect
 	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c
 	golang.org/x/sys v0.0.0-20210503173754-0981d6026fa6
-	golang.zx2c4.com/wireguard v0.0.20201118
+	golang.zx2c4.com/wireguard v0.0.0-20210604143328-f9b48a961cd2
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20210506160403-92e472f520a5
 	nhooyr.io/websocket v1.8.7 // indirect
 )
