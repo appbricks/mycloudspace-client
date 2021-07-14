@@ -1,17 +1,22 @@
 package mycscloud_test
 
 import (
+	"fmt"
+	"path/filepath"
+
 	"golang.org/x/oauth2"
 
 	"github.com/appbricks/cloud-builder/config"
+	"github.com/appbricks/cloud-builder/target"
 	"github.com/appbricks/cloud-builder/test/mocks"
 	"github.com/appbricks/mycloudspace-client/api"
 	"github.com/appbricks/mycloudspace-client/mycscloud"
 
-	test_server "github.com/appbricks/mycloudspace-client/test/server"
-
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
+
+	target_mocks "github.com/appbricks/cloud-builder/test/mocks"
+	test_server "github.com/appbricks/mycloudspace-client/test/server"
 )
 
 var _ = Describe("Device API", func() {
@@ -23,6 +28,8 @@ var _ = Describe("Device API", func() {
 		testServer *test_server.MockHttpServer
 
 		spaceAPI *mycscloud.SpaceAPI
+
+		tgt *target.Target
 	)
 
 	BeforeEach(func() {
@@ -43,9 +50,25 @@ var _ = Describe("Device API", func() {
 		testServer.ExpectCommonHeader("Authorization", "mock authorization token")		
 		testServer.Start()
 
-		// Space API client
+		// space API client
 		spaceAPI = mycscloud.NewSpaceAPI(api.NewGraphQLClient("http://localhost:9096/", "", cfg))
 		// spaceAPI = mycscloud.NewSpaceAPI(api.NewGraphQLClient("https://ss3hvtbnzrasfbevhaoa4mlaiu.appsync-api.us-east-1.amazonaws.com/graphql", "", cfg))
+		
+		// configure target instance to use for tests
+		testRecipePath, err := filepath.Abs(fmt.Sprintf("%s/../../cloud-builder/test/fixtures/recipes", sourceDirPath))
+		Expect(err).NotTo(HaveOccurred())
+
+		tgtCtx := target_mocks.NewTargetMockContext(testRecipePath)
+		tgt, err = tgtCtx.NewTarget("basic", "aws")	
+		Expect(err).ToNot(HaveOccurred())
+		Expect(tgt).ToNot(BeNil())
+		
+		tgt.RSAPublicKey = "PubKey"
+		providerInput, err := tgt.Provider.InputForm()
+		Expect(err).ToNot(HaveOccurred())
+
+		err = providerInput.SetFieldValue("region", "us-east-1")
+		Expect(err).ToNot(HaveOccurred())
 	})
 
 	AfterEach(func() {		
@@ -54,15 +77,11 @@ var _ = Describe("Device API", func() {
 
 	It("adds a space", func() {
 
-		var (
-			idKey, deviceID string
-		)
-
 		testServer.PushRequest().
 			ExpectJSONRequest(addSpaceRequest).
 			RespondWith(errorResponse)
 
-		_, _, err = spaceAPI.AddSpace("ken's space #5", "kenspc5certreq", "kenspc5pubkey", "recipe #3", "aws", "us-west-2", true)
+		err = spaceAPI.AddSpace(tgt, true)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("an error occurred"))
 		
@@ -70,10 +89,10 @@ var _ = Describe("Device API", func() {
 			ExpectJSONRequest(addSpaceRequest).
 			RespondWith(addSpaceResponse)
 		
-		idKey, deviceID, err = spaceAPI.AddSpace("ken's space #5", "kenspc5certreq", "kenspc5pubkey", "recipe #3", "aws", "us-west-2", true)
+		err = spaceAPI.AddSpace(tgt, true)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(idKey).To(Equal("test id key"))
-		Expect(deviceID).To(Equal("new space id"))
+		Expect(tgt.SpaceKey).To(Equal("test id key"))
+		Expect(tgt.SpaceID).To(Equal("new space id"))
 	})
 
 	It("deletes a space", func() {
@@ -82,11 +101,13 @@ var _ = Describe("Device API", func() {
 			userIDs []string
 		)
 
+		tgt.SpaceID = "a space id"
+
 		testServer.PushRequest().
 			ExpectJSONRequest(deleteSpaceRequest).
 			RespondWith(errorResponse)
 
-		_, err = spaceAPI.DeleteSpace("a space id")
+		_, err = spaceAPI.DeleteSpace(tgt)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("an error occurred"))
 
@@ -94,7 +115,7 @@ var _ = Describe("Device API", func() {
 			ExpectJSONRequest(deleteSpaceRequest).
 			RespondWith(deleteSpaceResponse)
 		
-		userIDs, err = spaceAPI.DeleteSpace("a space id")
+		userIDs, err = spaceAPI.DeleteSpace(tgt)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(len(userIDs)).To(Equal(2))
 		Expect(userIDs[0]).To(Equal("removed space user #1"))
@@ -103,14 +124,13 @@ var _ = Describe("Device API", func() {
 })
 
 const addSpaceRequest = `{
-	"query": "mutation ($iaas:String!$isEgressNode:Boolean!$recipe:String!$region:String!$spaceCertRequest:String!$spaceName:String!$spacePublicKey:String!){addSpace(spaceName: $spaceName, spaceKey: {certificateRequest: $spaceCertRequest, publicKey: $spacePublicKey}, recipe: $recipe, iaas: $iaas, region: $region, isEgressNode: $isEgressNode){idKey,spaceUser{space{spaceID}}}}",
+	"query": "mutation ($iaas:String!$isEgressNode:Boolean!$recipe:String!$region:String!$spaceName:String!$spacePublicKey:String!){addSpace(spaceName: $spaceName, spaceKey: {publicKey: $spacePublicKey}, recipe: $recipe, iaas: $iaas, region: $region, isEgressNode: $isEgressNode){idKey,spaceUser{space{spaceID}}}}",
 	"variables": {
-		"spaceName": "ken's space #5",
-		"spaceCertRequest": "kenspc5certreq",
-		"spacePublicKey": "kenspc5pubkey",
-		"recipe": "recipe #3",
+		"spaceName": "NONAME",
+		"spacePublicKey": "PubKey",
+		"recipe": "basic",
 		"iaas": "aws",
-		"region": "us-west-2",
+		"region": "us-east-1",
 		"isEgressNode": true
 	}
 }`

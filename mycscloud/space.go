@@ -3,6 +3,7 @@ package mycscloud
 import (
 	"context"
 
+	"github.com/appbricks/cloud-builder/target"
 	"github.com/hasura/go-graphql-client"
 	"github.com/mevansam/goutils/logger"
 )
@@ -19,14 +20,9 @@ func NewSpaceAPI(apiClient *graphql.Client) *SpaceAPI {
 }
 
 func (s *SpaceAPI) AddSpace(
-	spaceName,
-	spaceCertRequest,
-	spacePublicKey,
-	recipe,
-	iaas,
-	region string,
+	tgt *target.Target,
 	isEgressNode bool,
-) (string, string, error) {
+) error {
 
 	var mutation struct {
 		AddSpace struct {
@@ -36,32 +32,35 @@ func (s *SpaceAPI) AddSpace(
 					SpaceID graphql.String `graphql:"spaceID"`
 				}
 			}
-		} `graphql:"addSpace(spaceName: $spaceName, spaceKey: {certificateRequest: $spaceCertRequest, publicKey: $spacePublicKey}, recipe: $recipe, iaas: $iaas, region: $region, isEgressNode: $isEgressNode)"`
+		} `graphql:"addSpace(spaceName: $spaceName, spaceKey: {publicKey: $spacePublicKey}, recipe: $recipe, iaas: $iaas, region: $region, isEgressNode: $isEgressNode)"`
 	}
 	variables := map[string]interface{}{
-		"spaceName": graphql.String(spaceName),
-		"spaceCertRequest": graphql.String(spaceCertRequest),
-		"spacePublicKey": graphql.String(spacePublicKey),
-		"recipe": graphql.String(recipe),
-		"iaas": graphql.String(iaas),
-		"region": graphql.String(region),
+		"spaceName": graphql.String(tgt.DeploymentName()),
+		"spacePublicKey": graphql.String(tgt.RSAPublicKey),
+		"recipe": graphql.String(tgt.RecipeName),
+		"iaas": graphql.String(tgt.RecipeIaas),
+		"region": graphql.String(*tgt.Provider.Region()),
 		"isEgressNode": graphql.Boolean(isEgressNode),
 	}
 	if err := s.apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
 		logger.DebugMessage("SpaceAPI: addSpace mutation returned an error: %s", err.Error())
-		return "", "", err
+		return err
 	}
 	logger.DebugMessage("SpaceAPI: addSpace mutation returned response: %# v", mutation)
-	return string(mutation.AddSpace.IdKey), string(mutation.AddSpace.SpaceUser.Space.SpaceID), nil
+	
+	tgt.SpaceKey = string(mutation.AddSpace.IdKey)
+	tgt.SpaceID = string(mutation.AddSpace.SpaceUser.Space.SpaceID)
+
+	return nil
 }
 
-func (s *SpaceAPI) DeleteSpace(spaceID string) ([]string, error) {
+func (s *SpaceAPI) DeleteSpace(tgt *target.Target) ([]string, error) {
 
 	var mutation struct {
 		DeleteSpace []string `graphql:"deleteSpace(spaceID: $spaceID)"`
 	}
 	variables := map[string]interface{}{
-		"spaceID": graphql.ID(spaceID),
+		"spaceID": graphql.ID(tgt.SpaceID),
 	}
 	if err := s.apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
 		logger.DebugMessage("SpaceAPI: deleteSpace mutation returned an error: %s", err.Error())

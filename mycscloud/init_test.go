@@ -1,6 +1,8 @@
 package mycscloud_test
 
 import (
+	"path"
+	"runtime"
 	"testing"
 
 	"github.com/mevansam/goutils/logger"
@@ -9,8 +11,15 @@ import (
 	. "github.com/onsi/gomega"
 )
 
+var (
+	sourceDirPath string
+)
+
 func TestMyCSCloud(t *testing.T) {
 	logger.Initialize()
+
+	_, filename, _, _ := runtime.Caller(0)
+	sourceDirPath = path.Dir(filename)
 
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "mycscloud")
