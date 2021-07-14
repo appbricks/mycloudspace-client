@@ -1,8 +1,6 @@
 package mycscloud_test
 
 import (
-	. "github.com/onsi/ginkgo"
-	. "github.com/onsi/gomega"
 	"golang.org/x/oauth2"
 
 	"github.com/appbricks/cloud-builder/config"
@@ -11,6 +9,9 @@ import (
 	"github.com/appbricks/mycloudspace-client/mycscloud"
 
 	test_server "github.com/appbricks/mycloudspace-client/test/server"
+
+	. "github.com/onsi/ginkgo"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Device API", func() {
@@ -52,7 +53,7 @@ var _ = Describe("Device API", func() {
 		testServer.Stop()
 	})	
 
-	FIt("gets device information", func() {
+	It("gets device information", func() {
 
 		deviceContext := config.NewDeviceContext()
 		err = deviceAPI.UpdateDeviceContext(deviceContext)
@@ -84,6 +85,9 @@ var _ = Describe("Device API", func() {
 
 		_, exists := deviceContext.GetGuestUser("guest1")
 		Expect(exists).To(BeTrue())
+
+		// set logged in user
+		deviceContext.SetLoggedInUser("0000", "owner")
 
 		testServer.PushRequest().
 			ExpectJSONRequest(updateDeviceContextRequest).
@@ -207,28 +211,6 @@ var _ = Describe("Device API", func() {
 		Expect(userID).To(Equal("a user id"))
 	})
 })
-
-const errorResponse = `{
-	"data": {},
-	"errors": [
-		{
-			"path": [
-				"addDevice"
-			],
-			"data": null,
-			"errorType": "Error",
-			"errorInfo": null,
-			"locations": [
-				{
-					"line": 2,
-					"column": 3,
-					"sourceName": null
-				}
-			],
-			"message": "an error occurred"
-		}
-	]
-}`
 
 const updateDeviceContextRequest = `{
 	"query": "query ($idKey:String!){authDevice(idKey: $idKey){accessType,device{deviceID,deviceName,users{deviceUsers{user{userID,userName},isOwner,status}}}}}",

@@ -12,6 +12,8 @@ replace github.com/mevansam/goforms => ../../mevansam/goforms
 
 replace github.com/mevansam/goutils => ../../mevansam/goutils
 
+replace tailscale.com => ../tailscale
+
 require (
 	github.com/appbricks/cloud-builder v0.0.0-00010101000000-000000000000
 	github.com/google/uuid v1.2.0 // indirect
