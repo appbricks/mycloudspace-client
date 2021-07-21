@@ -8,7 +8,7 @@ import (
 	"github.com/appbricks/mycloudspace-client/api"
 	"github.com/appbricks/mycloudspace-client/mycscloud"
 
-	test_server "github.com/appbricks/mycloudspace-client/test/server"
+	test_server "github.com/mevansam/goutils/test/mocks"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"

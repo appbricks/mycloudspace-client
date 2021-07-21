@@ -12,7 +12,7 @@ import (
 	"github.com/appbricks/cloud-builder/test/mocks"
 	"github.com/appbricks/mycloudspace-client/api"
 
-	test_server "github.com/appbricks/mycloudspace-client/test/server"
+	test_server "github.com/mevansam/goutils/test/mocks"
 )
 
 var _ = Describe("Auth Context", func() {

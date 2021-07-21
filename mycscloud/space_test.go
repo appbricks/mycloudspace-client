@@ -16,7 +16,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	target_mocks "github.com/appbricks/cloud-builder/test/mocks"
-	test_server "github.com/appbricks/mycloudspace-client/test/server"
+	test_server "github.com/mevansam/goutils/test/mocks"
 )
 
 var _ = Describe("Device API", func() {
