@@ -63,12 +63,10 @@ func (w *wireguard) Connect() error {
 
 	logLevel := func() int {
 		switch log.GetLevel() {
-		case log.TraceLevel, log.DebugLevel:
+		case log.TraceLevel, log.DebugLevel, log.InfoLevel:
 			return device.LogLevelVerbose
-		case log.ErrorLevel:
+		case log.WarnLevel, log.ErrorLevel:
 			return device.LogLevelError
-		case log.InfoLevel:
-			return device.LogLevelSilent
 		}
 		return device.LogLevelError
 	}()
