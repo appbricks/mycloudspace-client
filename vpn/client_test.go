@@ -33,7 +33,7 @@ var _ = Describe("Client", func() {
 
 		BeforeEach(func() {
 			cli = utils_mocks.NewFakeCLI(&outputBuffer, &errorBuffer)			
-			tgt = cookbook_mocks.NewMockTarget(cli)
+			tgt = cookbook_mocks.NewMockTarget(cli, "1.1.1.1", 9999, "")
 
 			output = make(map[string]terraform.Output)
 			tgt.Output = &output

@@ -143,7 +143,7 @@ func (ctx *fakeTargetContext) NewTarget(
 	)
 
 	cli = utils_mocks.NewFakeCLI(&ctx.outputBuffer, &ctx.errorBuffer)			
-	tgt = cookbook_mocks.NewMockTarget(cli)
+	tgt = cookbook_mocks.NewMockTarget(cli, "1.1.1.1", 9999, "")
 	tgt.Recipe.(*cookbook_mocks.FakeRecipe).SetBastion()
 
 	return tgt, nil
