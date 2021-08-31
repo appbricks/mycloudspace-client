@@ -111,7 +111,7 @@ func getVPNConfig(
 		vpcName,
 	)
 	url = fmt.Sprintf(
-		"%s/~%s/%s",
+		"%s/static/~%s/%s",
 		url, user, configFileName,
 	)
 
