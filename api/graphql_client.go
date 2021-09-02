@@ -30,7 +30,6 @@ func (h authHeader) RoundTrip(req *http.Request) (*http.Response, error) {
 	req.Header.Add("Connection", "keep-alive")
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "*/*")
-	req.Header.Add("Accept-Encoding", "gzip, deflate, br")
 	req.Header.Add("Authorization", h.idToken)
 	return http.DefaultTransport.RoundTrip(req)
 }
