@@ -19,6 +19,7 @@ require (
 	github.com/google/uuid v1.2.0 // indirect
 	github.com/hasura/go-graphql-client v0.2.0
 	github.com/klauspost/compress v1.13.0 // indirect
+	github.com/kr/pretty v0.2.0 // indirect
 	github.com/lestrrat-go/jwx v1.2.1
 	github.com/mevansam/gocloud v0.0.0-00010101000000-000000000000
 	github.com/mevansam/goutils v0.0.0-00010101000000-000000000000
