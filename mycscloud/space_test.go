@@ -1,21 +1,16 @@
 package mycscloud_test
 
 import (
-	"fmt"
-	"path/filepath"
-
-	"golang.org/x/oauth2"
-
 	"github.com/appbricks/cloud-builder/config"
 	"github.com/appbricks/cloud-builder/target"
-	"github.com/appbricks/cloud-builder/test/mocks"
+	"github.com/appbricks/cloud-builder/userspace"
 	"github.com/appbricks/mycloudspace-client/api"
 	"github.com/appbricks/mycloudspace-client/mycscloud"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
 
-	target_mocks "github.com/appbricks/cloud-builder/test/mocks"
+	mycs_mocks "github.com/appbricks/mycloudspace-client/test/mocks"
 	test_server "github.com/mevansam/goutils/test/mocks"
 )
 
@@ -33,17 +28,10 @@ var _ = Describe("Space API", func() {
 	)
 
 	BeforeEach(func() {
-
-		authContext := config.NewAuthContext()
-		authContext.SetToken(
-			(&oauth2.Token{}).WithExtra(
-				map[string]interface{}{
-					"id_token": "mock authorization token",
-					// "id_token": "eyJraWQiOiJxbWdET3lPXC95S1VhdWloSE1RcjVxZ3orZWFnWms1dmNLNFBkejBPejdSdz0iLCJhbGciOiJSUzI1NiJ9.eyJhdF9oYXNoIjoiU3hBMHp4ZDFjUHJSclp4UTJDRjNYUSIsImN1c3RvbTpwcmVmZXJlbmNlcyI6IntcInByZWZlcnJlZE5hbWVcIjpcIm1ldmFuXCIsXCJlbmFibGVCaW9tZXRyaWNcIjpmYWxzZSxcImVuYWJsZU1GQVwiOmZhbHNlLFwiZW5hYmxlVE9UUFwiOmZhbHNlLFwicmVtZW1iZXJGb3IyNGhcIjpmYWxzZX0iLCJzdWIiOiIwY2E4Mzk0Yi01ZjEwLTQ4YWQtYmYzMC01MTIzOWY0NDlkYWYiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaXNzIjoiaHR0cHM6XC9cL2NvZ25pdG8taWRwLnVzLWVhc3QtMS5hbWF6b25hd3MuY29tXC91cy1lYXN0LTFfaHlPV1A2YkhmIiwicGhvbmVfbnVtYmVyX3ZlcmlmaWVkIjp0cnVlLCJjb2duaXRvOnVzZXJuYW1lIjoibWV2YW4iLCJnaXZlbl9uYW1lIjoiTWV2YW4iLCJjdXN0b206dXNlcklEIjoiN2E0YWUwYzAtYTI1Zi00Mzc2LTk4MTYtYjQ1ZGY4ZGE1ZTg4IiwiYXVkIjoiMTh0ZmZtazd2Y2g3MTdia3NlaGo0NGQ4NXIiLCJ0b2tlbl91c2UiOiJpZCIsImF1dGhfdGltZSI6MTYzMDUxNzI2NCwicGhvbmVfbnVtYmVyIjoiKzE5Nzg2NTI2NjE1IiwiZXhwIjoxNjMwNjAzNjY0LCJpYXQiOjE2MzA1MTcyNjQsImZhbWlseV9uYW1lIjoiU2FtYXJhdHVuZ2EiLCJlbWFpbCI6Im1ldmFuc2FtQGdtYWlsLmNvbSJ9.WHbHXzaXI-I8y8NV7HHLIRji4zM64CsBJRMRtbox9akS-jpW0HE5GM1SMnNmDvTbgnPN9FSQXrz7vs0kwhTkKjTo384NoytdUwYXjf5WSqyVk4kbAxbWFmDco0EavK_w6QT0EBbzOVyZ3K-MAN0F8ydSZ1OxWysBf3uN254lIx-uibz07aAGgk0R-HaR6_afEsl9YWDkbTtXFLTqY2QGtWWe6uZzDf0RMHwFFLrbHI7_f5y_Q9yk0hHP-FrkwiFPtVnFcHfMq3k_5z7_PIXwVQrvYjuqJbgHaXGLTYa0-oB_l8nOFQvnM8UPH0oZrMRGHR9wOoYnRyD2Ki-n3rrfJA",
-				},
-			),
-		)
-		cfg = mocks.NewMockConfig(authContext, nil, nil)
+		cfg, err = mycs_mocks.NewMockConfig(sourceDirPath)
+		Expect(err).NotTo(HaveOccurred())
+		
+		tgt = cfg.TargetContext().TargetSet().GetTargets()[0]
 
 		// start test server
 		testServer = test_server.NewMockHttpServer(9096)
@@ -53,22 +41,6 @@ var _ = Describe("Space API", func() {
 		// space API client
 		spaceAPI = mycscloud.NewSpaceAPI(api.NewGraphQLClient("http://localhost:9096/", "", cfg))
 		// spaceAPI = mycscloud.NewSpaceAPI(api.NewGraphQLClient("https://ss3hvtbnzrasfbevhaoa4mlaiu.appsync-api.us-east-1.amazonaws.com/graphql", "", cfg))
-
-		// configure target instance to use for tests
-		testRecipePath, err := filepath.Abs(fmt.Sprintf("%s/../../cloud-builder/test/fixtures/recipes", sourceDirPath))
-		Expect(err).NotTo(HaveOccurred())
-
-		tgtCtx := target_mocks.NewTargetMockContext(testRecipePath)
-		tgt, err = tgtCtx.NewTarget("basic", "aws")
-		Expect(err).ToNot(HaveOccurred())
-		Expect(tgt).ToNot(BeNil())
-
-		tgt.RSAPublicKey = "PubKey"
-		providerInput, err := tgt.Provider.InputForm()
-		Expect(err).ToNot(HaveOccurred())
-
-		err = providerInput.SetFieldValue("region", "us-east-1")
-		Expect(err).ToNot(HaveOccurred())
 	})
 
 	AfterEach(func() {
@@ -93,6 +65,8 @@ var _ = Describe("Space API", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(tgt.SpaceKey).To(Equal("test id key"))
 		Expect(tgt.SpaceID).To(Equal("new space id"))
+
+		Expect(testServer.Done()).To(BeTrue())
 	})
 
 	It("deletes a space", func() {
@@ -120,6 +94,8 @@ var _ = Describe("Space API", func() {
 		Expect(len(userIDs)).To(Equal(2))
 		Expect(userIDs[0]).To(Equal("removed space user #1"))
 		Expect(userIDs[1]).To(Equal("removed space user #2"))
+
+		Expect(testServer.Done()).To(BeTrue())
 	})
 
 	It("retrieves user's spaces", func() {
@@ -140,21 +116,56 @@ var _ = Describe("Space API", func() {
 		Expect(err).ToNot(HaveOccurred())
 
 		Expect(len(spaces)).To(Equal(1))
-		Expect(spaces[0].SpaceID).To(Equal("5ed8679e-d684-4d54-9b4f-2e73f7f8d342"))
-		Expect(spaces[0].SpaceName).To(Equal("MyCS-Dev-Test"))
+		Expect(spaces[0].SpaceID).To(Equal("1d812616-5955-4bc6-8b67-ec3f0f12a756"))
+		Expect(spaces[0].SpaceName).To(Equal("Test-Space-1"))
 		Expect(spaces[0].PublicKey).To(HavePrefix("-----BEGIN PUBLIC KEY-----"))
-		Expect(spaces[0].Recipe).To(Equal("sandbox"))
+		Expect(spaces[0].Recipe).To(Equal("basic"))
 		Expect(spaces[0].IaaS).To(Equal("aws"))
 		Expect(spaces[0].Region).To(Equal("us-east-1"))
 		Expect(spaces[0].Version).To(Equal("dev"))
 		Expect(spaces[0].Status).To(Equal("running"))
 		Expect(spaces[0].LastSeen).To(Equal(uint64(1630519684375)))
-		Expect(spaces[0].IsOwned).To(BeTrue())
+		Expect(spaces[0].IsAdmin).To(BeTrue())
 		Expect(spaces[0].AccessStatus).To(Equal("active"))
-		Expect(spaces[0].IPAddress).To(Equal("54.158.84.168"))
-		Expect(spaces[0].FQDN).To(Equal("mycs-dev-test-wg-us-east-1.local"))
+		Expect(spaces[0].IPAddress).To(Equal("1.1.1.1"))
+		Expect(spaces[0].FQDN).To(Equal("test1-wg-us-east-1.local"))
 		Expect(spaces[0].Port).To(Equal(443))
 		Expect(spaces[0].LocalCARoot).To(HavePrefix("-----BEGIN CERTIFICATE-----"))
+
+		Expect(testServer.Done()).To(BeTrue())
+	})
+
+	It("retrieves user's space nodes", func() {
+
+		testServer.PushRequest().
+			ExpectJSONRequest(getSpaceNodesRequest).
+			RespondWith(getSpaceNodesResponse)
+
+		spaceNodes, err := mycscloud.GetSpaceNodes("http://localhost:9096/", cfg)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(testServer.Done()).To(BeTrue())
+
+		sharedSpaces := spaceNodes.GetSharedSpaces()
+		Expect(len(sharedSpaces)).To(Equal(2))
+		Expect(sharedSpaces[0].Key()).To(Equal("basic/aws/bb/cookbook"))
+		Expect(sharedSpaces[0].GetSpaceID()).To(Equal("aa4ea679-ee74-4de6-852c-ccf7636bf644"))
+		Expect(sharedSpaces[1].Key()).To(Equal("basic/aws/aa/appbrickscookbook"))
+		Expect(sharedSpaces[1].GetSpaceID()).To(Equal("ad601f92-e073-4dfb-8e48-d97acde8e3fc"))
+
+		spaceNode := spaceNodes.LookupSpaceNode("basic/aws/aa/cookbook", func(nodes []userspace.SpaceNode) userspace.SpaceNode {
+			Expect(len(nodes)).To(Equal(1))
+			return nodes[0]
+		})
+		Expect(spaceNode.GetSpaceID()).To(Equal("1d812616-5955-4bc6-8b67-ec3f0f12a756"))
+		spaceNode = spaceNodes.LookupSpaceNode("basic/aws/bb/cookbook", func(nodes []userspace.SpaceNode) userspace.SpaceNode {
+			Expect(len(nodes)).To(Equal(2))
+			Expect(nodes[0].GetSpaceID()).To(Equal("1d2a49d7-330b-4beb-a102-33049869e472"))
+			Expect(nodes[1].GetSpaceID()).To(Equal("aa4ea679-ee74-4de6-852c-ccf7636bf644"))
+			return nodes[1]
+		})
+		Expect(spaceNode.GetSpaceID()).To(Equal("aa4ea679-ee74-4de6-852c-ccf7636bf644"))
+		spaceNode = spaceNodes.LookupSpaceNode("basic/aws/cc/cookbook", nil)
+		Expect(spaceNode.GetSpaceID()).To(Equal(""))
 	})
 })
 
@@ -162,7 +173,7 @@ const addSpaceRequest = `{
 	"query": "mutation ($iaas:String!$isEgressNode:Boolean!$recipe:String!$region:String!$spaceName:String!$spacePublicKey:String!){addSpace(spaceName: $spaceName, spaceKey: {publicKey: $spacePublicKey}, recipe: $recipe, iaas: $iaas, region: $region, isEgressNode: $isEgressNode){idKey,spaceUser{space{spaceID}}}}",
 	"variables": {
 		"spaceName": "NONAME",
-		"spacePublicKey": "PubKey",
+		"spacePublicKey": "PubKey1",
 		"recipe": "basic",
 		"iaas": "aws",
 		"region": "us-east-1",
@@ -198,7 +209,7 @@ const deleteSpaceResponse = `{
 }`
 
 const getSpacesRequest = `{
-	"query": "{getUser{spaces{spaceUsers{space{spaceID,spaceName,publicKey,recipe,iaas,region,version,ipAddress,fqdn,port,localCARoot,status,lastSeen},isOwner,status}}}}"
+	"query": "{getUser{spaces{spaceUsers{space{spaceID,spaceName,publicKey,recipe,iaas,region,version,ipAddress,fqdn,port,localCARoot,status,lastSeen},isAdmin,status}}}}"
 }`
 const getSpacesResponse = `{
 	"data": {
@@ -207,21 +218,92 @@ const getSpacesResponse = `{
 				"spaceUsers": [
 					{
 						"space": {
-							"spaceID": "5ed8679e-d684-4d54-9b4f-2e73f7f8d342",
-							"spaceName": "MyCS-Dev-Test",
-							"publicKey": "-----BEGIN PUBLIC KEY-----\nMIICIjANBgkqhkiG9w0BAQEFAAOCAg8AMIICCgKCAgEAr0LUV04g6H9lYn54O7ER\nAQTUAeJouZAngiq7R/FyJnUqDWrBO5kQNamAF8vswv/3SrmfRB9DOotxYrVdz6j6\n5PQKE1GKqKXIUM964iA4R+6p8S+mzW33vwDOC58rVnfISb2i5ja2R3Idx+MMbgK8\nVFA7bRuj/2xo3nW2w6qHKW1isSoDTbHfTWgoJsZBMCcs5XP1RrsT9yN1GZvGiHeA\nyy71j7ZRZAA8xt8CPIRvQ9X9zMj/2CAHgTTCHiFZ+O/6Nmr3A26U0IJjY7SzEjM1\nunV2Ms7Snb8AHGP6WErdYlSVwk0/h4YB26CgFvAzkC4Wr1QbOhMNwmqIb0i8PPGJ\nPAB6fVpM4EVZQOZMF4cYg+ZSq5vuWrrFYbsy4hW4RLgBsHrFCIZjKw2E/52RDMDB\n2qOFtwniW+VaA+s22Jy1ZMwR88jcniDWA8dXfYQ+e5Nkd/hrmBa0pYLOTTQzzzhh\nMo8iTw+QxHGeHCI/Wne0n9BGk3A+H/exDVSUtCf9yGXTwlEjNqtdA09+p1OINSlW\n1IVIs5or5SgLFChmuyu/DaAp7A4BywxfJ6QOaSCN8cEZI6cAS9wytCoWaStFYmPk\n0tFUHEyKLDZQs/InfAnQ+G3rmQ0oJHwuYHn6x5hP4YNz285247FubfJgfU8ne8OS\nIikEW5txj0gJy0yQTktTMHUCAwEAAQ==\n-----END PUBLIC KEY-----\n",
-							"recipe": "sandbox",
+							"spaceID": "1d812616-5955-4bc6-8b67-ec3f0f12a756",
+							"spaceName": "Test-Space-1",
+							"publicKey": "-----BEGIN PUBLIC KEY-----\n****\n-----END PUBLIC KEY-----\n",
+							"recipe": "basic",
 							"iaas": "aws",
 							"region": "us-east-1",
 							"version": "dev",
-							"ipAddress": "54.158.84.168",
-							"fqdn": "mycs-dev-test-wg-us-east-1.local",
+							"ipAddress": "1.1.1.1",
+							"fqdn": "test1-wg-us-east-1.local",
 							"port": 443,
-							"localCARoot": "-----BEGIN CERTIFICATE-----\n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\ngBuNRlUAJX6/notkiXW+f2cHGOOA2a+2sI1sSA==\n-----END CERTIFICATE-----\n",
+							"localCARoot": "-----BEGIN CERTIFICATE-----\n****\n-----END CERTIFICATE-----\n",
 							"status": "running",
 							"lastSeen": 1630519684375
 						},
-						"isOwner": true,
+						"isAdmin": true,
+						"status": "active"
+					}
+				]
+			}
+		}
+	}
+}`
+
+const getSpaceNodesRequest = `{
+	"query": "{getUser{spaces{spaceUsers{space{spaceID,spaceName,publicKey,recipe,iaas,region,version,ipAddress,fqdn,port,localCARoot,status,lastSeen},isAdmin,status}}}}"
+}`
+const getSpaceNodesResponse = `{
+	"data": {
+		"getUser": {
+			"spaces": {
+				"spaceUsers": [
+					{
+						"space": {
+							"spaceID": "1d812616-5955-4bc6-8b67-ec3f0f12a756",
+							"spaceName": "cookbook",
+							"publicKey": "-----BEGIN PUBLIC KEY-----\n****\n-----END PUBLIC KEY-----\n",
+							"recipe": "basic",
+							"iaas": "aws",
+							"region": "aa",
+							"version": "dev",
+							"ipAddress": "1.1.1.1",
+							"fqdn": "test1-wg-us-east-1.local",
+							"port": 443,
+							"localCARoot": "-----BEGIN CERTIFICATE-----\n****\n-----END CERTIFICATE-----\n",
+							"status": "running",
+							"lastSeen": 1630519684375
+						},
+						"isAdmin": true,
+						"status": "active"
+					},
+					{
+						"space": {
+							"spaceID": "aa4ea679-ee74-4de6-852c-ccf7636bf644",
+							"spaceName": "cookbook",
+							"publicKey": "-----BEGIN PUBLIC KEY-----\n****\n-----END PUBLIC KEY-----\n",
+							"recipe": "basic",
+							"iaas": "aws",
+							"region": "bb",
+							"version": "dev",
+							"ipAddress": "2.2.2.2",
+							"fqdn": "test2-wg-us-east-1.local",
+							"port": 443,
+							"localCARoot": "-----BEGIN CERTIFICATE-----\n****\n-----END CERTIFICATE-----\n",
+							"status": "unknown",
+							"lastSeen": 1630519684375
+						},
+						"isAdmin": false,
+						"status": "active"
+					},
+					{
+						"space": {
+							"spaceID": "ad601f92-e073-4dfb-8e48-d97acde8e3fc",
+							"spaceName": "appbrickscookbook",
+							"publicKey": "-----BEGIN PUBLIC KEY-----\n****\n-----END PUBLIC KEY-----\n",
+							"recipe": "basic",
+							"iaas": "aws",
+							"region": "aa",
+							"version": "dev",
+							"ipAddress": "3.3.3.3",
+							"fqdn": "test3-wg-us-east-1.local",
+							"port": 443,
+							"localCARoot": "-----BEGIN CERTIFICATE-----\n****\n-----END CERTIFICATE-----\n",
+							"status": "unknown",
+							"lastSeen": 1630519684375
+						},
+						"isAdmin": false,
 						"status": "active"
 					}
 				]

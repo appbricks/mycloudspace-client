@@ -22,6 +22,7 @@ require (
 	github.com/kr/pretty v0.2.0 // indirect
 	github.com/lestrrat-go/jwx v1.2.1
 	github.com/mevansam/gocloud v0.0.0-00010101000000-000000000000
+	github.com/mevansam/goforms v0.0.0-00010101000000-000000000000 // indirect
 	github.com/mevansam/goutils v0.0.0-00010101000000-000000000000
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.15.0

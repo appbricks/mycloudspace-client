@@ -3,8 +3,10 @@ package mycscloud
 import (
 	"context"
 
+	"github.com/appbricks/cloud-builder/config"
 	"github.com/appbricks/cloud-builder/target"
 	"github.com/appbricks/cloud-builder/userspace"
+	"github.com/appbricks/mycloudspace-client/api"
 	"github.com/hasura/go-graphql-client"
 	"github.com/mevansam/goutils/logger"
 )
@@ -131,4 +133,98 @@ func (s *SpaceAPI) GetSpaces() ([]*userspace.Space, error) {
 	}
 
 	return spaces, nil
+}
+
+// space nodes aggregates remote and local 
+// nodes and consolidates and duplicates
+type SpaceNodes struct {
+	// lookup for all remote and local space nodes
+	spaceNodes map[string][]userspace.SpaceNode
+	// remote space targets
+	sharedSpaces []*userspace.Space
+}
+
+func GetSpaceNodes(apiUrl string, config config.Config) (*SpaceNodes, error) {
+
+	var (
+		err    error
+		exists bool
+
+		node  userspace.SpaceNode
+		nodes []userspace.SpaceNode
+	)
+
+	sn := &SpaceNodes{
+		spaceNodes: make(map[string][]userspace.SpaceNode),
+	}
+
+	spaceAPI := NewSpaceAPI(api.NewGraphQLClient(apiUrl, "", config))
+	if sn.sharedSpaces, err = spaceAPI.GetSpaces(); err != nil {
+		return nil, err
+	}	
+
+	spaceTargets := make(map[string]*target.Target)
+	for _, t := range config.TargetContext().TargetSet().GetTargets() {
+		if (len(t.SpaceID) > 0) {
+			spaceTargets[t.SpaceID] = t
+		}
+		// all local targets should have unique keys
+		sn.spaceNodes[t.Key()] = []userspace.SpaceNode{t}
+	}
+
+	j := len(sn.sharedSpaces) - 1
+	for i := j; i >= 0; i-- {
+		node = sn.sharedSpaces[i]		
+
+		// remote space node key may have duplicates so 
+		// create a list of of nodes with similar keys
+		if nodes, exists = sn.spaceNodes[node.Key()]; !exists {
+			sn.spaceNodes[node.Key()] = []userspace.SpaceNode{node}
+		} else {
+			addNode := true
+			for _, n := range nodes {
+				if node.GetSpaceID() == n.GetSpaceID() {
+					// if remote node and local node both have 
+					// the same space id then they are identical
+					addNode = false;
+					break
+				}
+			}
+			if addNode {
+				sn.spaceNodes[node.Key()] = append(nodes, node)
+			}
+		}
+
+		// remove spaces that have a local target
+		if _, isTarget := spaceTargets[node.GetSpaceID()]; isTarget {
+			if i == j {
+				sn.sharedSpaces = sn.sharedSpaces[0:i]
+			} else {
+				sn.sharedSpaces = append(sn.sharedSpaces[0:i], sn.sharedSpaces[i+1:]...)
+			}
+			j--
+		}
+	}
+	return sn, nil
+}
+
+func (sn *SpaceNodes) LookupSpaceNode(
+	key string, 
+	selectNode func(nodes []userspace.SpaceNode) userspace.SpaceNode,
+) userspace.SpaceNode {
+
+	nodes, exists := sn.spaceNodes[key]
+	if exists {
+		if len(nodes) > 0 {
+			if len(nodes) > 1 && selectNode != nil {
+				return selectNode(nodes)
+			}
+			return nodes[0]
+		}
+	}
+	return nil
+}
+
+func (sn *SpaceNodes) GetSharedSpaces() []*userspace.Space {
+	return sn.sharedSpaces
 }
