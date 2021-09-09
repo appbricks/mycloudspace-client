@@ -49,7 +49,7 @@ func (s *SpaceAPI) AddSpace(
 		logger.DebugMessage("SpaceAPI: addSpace mutation returned an error: %s", err.Error())
 		return err
 	}
-	logger.DebugMessage("SpaceAPI: addSpace mutation returned response: %# v", mutation)
+	logger.TraceMessage("SpaceAPI: addSpace mutation returned response: %# v", mutation)
 	
 	tgt.SpaceKey = string(mutation.AddSpace.IdKey)
 	tgt.SpaceID = string(mutation.AddSpace.SpaceUser.Space.SpaceID)
@@ -69,7 +69,7 @@ func (s *SpaceAPI) DeleteSpace(tgt *target.Target) ([]string, error) {
 		logger.DebugMessage("SpaceAPI: deleteSpace mutation returned an error: %s", err.Error())
 		return nil, err
 	}
-	logger.DebugMessage("SpaceAPI: deleteSpace mutation returned response: %# v", mutation)
+	logger.TraceMessage("SpaceAPI: deleteSpace mutation returned response: %# v", mutation)
 
 	userIDs := []string{}
 	for _, userID := range mutation.DeleteSpace {
@@ -109,27 +109,29 @@ func (s *SpaceAPI) GetSpaces() ([]*userspace.Space, error) {
 		logger.DebugMessage("SpaceAPI: getUsers query to retrieve user's space list returned an error: %s", err.Error())
 		return nil, err
 	}
-	logger.DebugMessage("SpaceAPI: getUsers query to retrieve user's space list returned response: %# v", query)
+	logger.TraceMessage("SpaceAPI: getUsers query to retrieve user's space list returned response: %# v", query)
 
 	spaces := []*userspace.Space{}
 	for _, spaceUser := range query.GetUser.Spaces.SpaceUsers {
-		spaces = append(spaces, &userspace.Space{
-			SpaceID:      string(spaceUser.Space.SpaceID),
-			SpaceName:    string(spaceUser.Space.SpaceName),
-			PublicKey:    string(spaceUser.Space.PublicKey),		
-			Recipe:       string(spaceUser.Space.Recipe),
-			IaaS:         string(spaceUser.Space.Iaas),
-			Region:       string(spaceUser.Space.Region),
-			Version:      string(spaceUser.Space.Version),
-			Status:       string(spaceUser.Space.Status),
-			LastSeen:     uint64(float64(spaceUser.Space.LastSeen)),
-			IsAdmin:      bool(spaceUser.IsAdmin),
-			AccessStatus: string(spaceUser.Status),
-			IPAddress:    string(spaceUser.Space.IpAddress),
-			FQDN:         string(spaceUser.Space.Fqdn),
-			Port:         int(spaceUser.Space.Port),
-			LocalCARoot:  string(spaceUser.Space.LocalCARoot),
-		})
+		if spaceUser.Status != "inactive" {
+			spaces = append(spaces, &userspace.Space{
+				SpaceID:      string(spaceUser.Space.SpaceID),
+				SpaceName:    string(spaceUser.Space.SpaceName),
+				PublicKey:    string(spaceUser.Space.PublicKey),		
+				Recipe:       string(spaceUser.Space.Recipe),
+				IaaS:         string(spaceUser.Space.Iaas),
+				Region:       string(spaceUser.Space.Region),
+				Version:      string(spaceUser.Space.Version),
+				Status:       string(spaceUser.Space.Status),
+				LastSeen:     uint64(float64(spaceUser.Space.LastSeen)),
+				IsAdmin:      bool(spaceUser.IsAdmin),
+				AccessStatus: string(spaceUser.Status),
+				IPAddress:    string(spaceUser.Space.IpAddress),
+				FQDN:         string(spaceUser.Space.Fqdn),
+				Port:         int(spaceUser.Space.Port),
+				LocalCARoot:  string(spaceUser.Space.LocalCARoot),
+			})	
+		}
 	}
 
 	return spaces, nil

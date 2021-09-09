@@ -65,7 +65,7 @@ func (d *DeviceAPI) UpdateDeviceContext(deviceContext config.DeviceContext) erro
 		logger.DebugMessage("DeviceAPI: authDevice query returned an error: %s", err.Error())
 		return err
 	}
-	logger.DebugMessage("DeviceAPI: authDevice query returned response: %# v", query)
+	logger.TraceMessage("DeviceAPI: authDevice query returned response: %# v", query)
 
 	if string(query.AuthDevice.AccessType) == "admin" {
 		// check if logged in user is the admin
@@ -161,7 +161,7 @@ func (d *DeviceAPI) RegisterDevice(
 		logger.DebugMessage("DeviceAPI: addDevice mutation returned an error: %s", err.Error())
 		return "", "", err
 	}
-	logger.DebugMessage("DeviceAPI: addDevice mutation returned response: %# v", mutation)
+	logger.TraceMessage("DeviceAPI: addDevice mutation returned response: %# v", mutation)
 	return string(mutation.AddDevice.IdKey), string(mutation.AddDevice.DeviceUser.Device.DeviceID), nil
 }
 
@@ -177,7 +177,7 @@ func (d *DeviceAPI) UnRegisterDevice(deviceID string) ([]string, error) {
 		logger.DebugMessage("DeviceAPI: deleteDevice mutation returned an error: %s", err.Error())
 		return nil, err
 	}
-	logger.DebugMessage("DeviceAPI: deleteDevice mutation returned response: %# v", mutation)
+	logger.TraceMessage("DeviceAPI: deleteDevice mutation returned response: %# v", mutation)
 
 	userIDs := []string{}
 	for _, userID := range mutation.DeleteDevice {
@@ -206,7 +206,7 @@ func (d *DeviceAPI) AddDeviceUser(deviceID, wireguardPublicKey string) (string, 
 		logger.DebugMessage("DeviceAPI: addDeviceUser mutation returned an error: %s", err.Error())
 		return "", "", err
 	}
-	logger.DebugMessage("DeviceAPI: addDeviceUser mutation returned response: %# v", mutation)
+	logger.TraceMessage("DeviceAPI: addDeviceUser mutation returned response: %# v", mutation)
 	return string(mutation.AddDeviceUser.Device.DeviceID), string(mutation.AddDeviceUser.User.UserID), nil
 }
 
@@ -229,6 +229,6 @@ func (d *DeviceAPI) RemoveDeviceUser(deviceID string) (string, string, error) {
 		logger.DebugMessage("DeviceAPI: deleteDeviceUser mutation returned an error: %s", err.Error())
 		return "", "", err
 	}
-	logger.DebugMessage("DeviceAPI: deleteDeviceUser mutation returned response: %# v", mutation)
+	logger.TraceMessage("DeviceAPI: deleteDeviceUser mutation returned response: %# v", mutation)
 	return string(mutation.DeleteDeviceUser.Device.DeviceID), string(mutation.DeleteDeviceUser.User.UserID), nil
 }
