@@ -146,24 +146,41 @@ type SpaceNodes struct {
 	sharedSpaces []*userspace.Space
 }
 
+func NewSpaceNodes(config config.Config) *SpaceNodes {
+	sn := &SpaceNodes{
+		spaceNodes: make(map[string][]userspace.SpaceNode),
+		sharedSpaces: []*userspace.Space{},
+	}
+	sn.consolidateRemoteAndLocalNodes(config)
+	return sn
+}
+
 func GetSpaceNodes(apiUrl string, config config.Config) (*SpaceNodes, error) {
 
 	var (
-		err    error
-		exists bool
-
-		node  userspace.SpaceNode
-		nodes []userspace.SpaceNode
+		err error
 	)
 
 	sn := &SpaceNodes{
 		spaceNodes: make(map[string][]userspace.SpaceNode),
 	}
-
 	spaceAPI := NewSpaceAPI(api.NewGraphQLClient(apiUrl, "", config))
 	if sn.sharedSpaces, err = spaceAPI.GetSpaces(); err != nil {
 		return nil, err
 	}	
+	
+	sn.consolidateRemoteAndLocalNodes(config)
+	return sn, nil
+}
+
+func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) {
+
+	var (
+		exists bool
+
+		node  userspace.SpaceNode
+		nodes []userspace.SpaceNode
+	)
 
 	spaceTargets := make(map[string]*target.Target)
 	for _, t := range config.TargetContext().TargetSet().GetTargets() {
@@ -207,7 +224,6 @@ func GetSpaceNodes(apiUrl string, config config.Config) (*SpaceNodes, error) {
 			j--
 		}
 	}
-	return sn, nil
 }
 
 func (sn *SpaceNodes) LookupSpaceNode(
