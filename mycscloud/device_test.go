@@ -37,7 +37,7 @@ var _ = Describe("Device API", func() {
 				},
 			),
 		)
-		cfg = mocks.NewMockConfig(authContext, nil, nil)
+		cfg = mocks.NewMockConfig(authContext, config.NewDeviceContext(), nil)
 
 		// start test server
 		testServer = test_server.NewMockHttpServer(9096)
@@ -55,7 +55,7 @@ var _ = Describe("Device API", func() {
 
 	It("gets device information", func() {
 
-		deviceContext := config.NewDeviceContext()
+		deviceContext := cfg.DeviceContext()
 		err = deviceAPI.UpdateDeviceContext(deviceContext)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("device context has not been initialized with a device"))
@@ -87,7 +87,8 @@ var _ = Describe("Device API", func() {
 		Expect(exists).To(BeTrue())
 
 		// set logged in user
-		deviceContext.SetLoggedInUser("0000", "owner")
+		err = cfg.SetLoggedInUser("0000", "owner")
+		Expect(err).ToNot(HaveOccurred())
 
 		testServer.PushRequest().
 			ExpectJSONRequest(updateDeviceContextRequest).
