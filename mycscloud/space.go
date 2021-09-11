@@ -2,6 +2,7 @@ package mycscloud
 
 import (
 	"context"
+	"sort"
 
 	"github.com/appbricks/cloud-builder/config"
 	"github.com/appbricks/cloud-builder/target"
@@ -99,6 +100,7 @@ func (s *SpaceAPI) GetSpaces() ([]*userspace.Space, error) {
 						Status      graphql.String
 						LastSeen	  graphql.Float
 					}
+					IsOwner graphql.Boolean
 					IsAdmin graphql.Boolean
 					Status  graphql.String
 				}
@@ -124,6 +126,7 @@ func (s *SpaceAPI) GetSpaces() ([]*userspace.Space, error) {
 				Version:      string(spaceUser.Space.Version),
 				Status:       string(spaceUser.Space.Status),
 				LastSeen:     uint64(float64(spaceUser.Space.LastSeen)),
+				IsOwned:      bool(spaceUser.IsOwner),
 				IsAdmin:      bool(spaceUser.IsAdmin),
 				AccessStatus: string(spaceUser.Status),
 				IPAddress:    string(spaceUser.Space.IpAddress),
@@ -241,6 +244,16 @@ func (sn *SpaceNodes) LookupSpaceNode(
 		}
 	}
 	return nil
+}
+
+func (sn *SpaceNodes) GetAllSpaces() []userspace.SpaceNode {
+
+	spaces := []userspace.SpaceNode{}
+	for _, nodes := range sn.spaceNodes {
+		spaces = append(spaces, nodes...)
+	}
+	sort.Sort(userspace.SpaceCollection(spaces))
+	return spaces
 }
 
 func (sn *SpaceNodes) GetSharedSpaces() []*userspace.Space {

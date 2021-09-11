@@ -125,6 +125,7 @@ var _ = Describe("Space API", func() {
 		Expect(spaces[0].Version).To(Equal("dev"))
 		Expect(spaces[0].Status).To(Equal("running"))
 		Expect(spaces[0].LastSeen).To(Equal(uint64(1630519684375)))
+		Expect(spaces[0].IsOwned).To(BeTrue())
 		Expect(spaces[0].IsAdmin).To(BeTrue())
 		Expect(spaces[0].AccessStatus).To(Equal("active"))
 		Expect(spaces[0].IPAddress).To(Equal("1.1.1.1"))
@@ -209,7 +210,7 @@ const deleteSpaceResponse = `{
 }`
 
 const getSpacesRequest = `{
-	"query": "{getUser{spaces{spaceUsers{space{spaceID,spaceName,publicKey,recipe,iaas,region,version,ipAddress,fqdn,port,localCARoot,status,lastSeen},isAdmin,status}}}}"
+	"query": "{getUser{spaces{spaceUsers{space{spaceID,spaceName,publicKey,recipe,iaas,region,version,ipAddress,fqdn,port,localCARoot,status,lastSeen},isOwner,isAdmin,status}}}}"
 }`
 const getSpacesResponse = `{
 	"data": {
@@ -232,6 +233,7 @@ const getSpacesResponse = `{
 							"status": "running",
 							"lastSeen": 1630519684375
 						},
+						"isOwner": true,
 						"isAdmin": true,
 						"status": "active"
 					}
@@ -242,7 +244,7 @@ const getSpacesResponse = `{
 }`
 
 const getSpaceNodesRequest = `{
-	"query": "{getUser{spaces{spaceUsers{space{spaceID,spaceName,publicKey,recipe,iaas,region,version,ipAddress,fqdn,port,localCARoot,status,lastSeen},isAdmin,status}}}}"
+	"query": "{getUser{spaces{spaceUsers{space{spaceID,spaceName,publicKey,recipe,iaas,region,version,ipAddress,fqdn,port,localCARoot,status,lastSeen},isOwner,isAdmin,status}}}}"
 }`
 const getSpaceNodesResponse = `{
 	"data": {
@@ -265,6 +267,7 @@ const getSpaceNodesResponse = `{
 							"status": "running",
 							"lastSeen": 1630519684375
 						},
+						"isOwner": true,
 						"isAdmin": true,
 						"status": "active"
 					},
@@ -284,6 +287,7 @@ const getSpaceNodesResponse = `{
 							"status": "unknown",
 							"lastSeen": 1630519684375
 						},
+						"isOwner": false,
 						"isAdmin": false,
 						"status": "active"
 					},
@@ -303,6 +307,7 @@ const getSpaceNodesResponse = `{
 							"status": "unknown",
 							"lastSeen": 1630519684375
 						},
+						"isOwner": false,
 						"isAdmin": false,
 						"status": "active"
 					}
