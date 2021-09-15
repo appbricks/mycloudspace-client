@@ -11,9 +11,7 @@ import (
 	"time"
 
 	"github.com/appbricks/cloud-builder/config"
-	"github.com/appbricks/cloud-builder/target"
 	"github.com/appbricks/cloud-builder/userspace"
-	"github.com/mevansam/gocloud/cloud"
 	"github.com/mevansam/goutils/crypto"
 	"github.com/mevansam/goutils/logger"
 	"github.com/mevansam/goutils/rest"
@@ -25,10 +23,8 @@ type ApiClient struct {
 	deviceContext config.DeviceContext
 	deviceRSAKey  *crypto.RSAKey
 
-	tgt      *target.Target
-	instance *target.ManagedInstance
-
-	tgtPublicKey *crypto.RSAPublicKey
+	node          userspace.SpaceNode
+	nodePublicKey *crypto.RSAPublicKey
 
 	keyTimeoutAt  int64
 	crypt         *crypto.Crypt
@@ -73,7 +69,7 @@ type ErrorResponse struct {
 	ErrorMessage string `json:"errorMessage"`
 }
 
-func NewApiClientFromTarget(deviceContext config.DeviceContext, tgt *target.Target) (*ApiClient, error) {
+func NewApiClient(deviceContext config.DeviceContext, node userspace.SpaceNode) (*ApiClient, error) {
 
 	var (
 		err error
@@ -81,25 +77,22 @@ func NewApiClientFromTarget(deviceContext config.DeviceContext, tgt *target.Targ
 	
 	apiClient := &ApiClient{ 
 		deviceContext: deviceContext,
-		tgt:           tgt,
+		node:          node,
 	}
-	if apiClient.tgtPublicKey, err = crypto.NewPublicKeyFromPEM(tgt.RSAPublicKey); err != nil {
+	if apiClient.nodePublicKey, err = crypto.NewPublicKeyFromPEM(node.GetPublicKey()); err != nil {
 		return nil, err
 	}
 	if apiClient.deviceRSAKey, err = crypto.NewRSAKeyFromPEM(deviceContext.GetDevice().RSAPrivateKey, nil); err != nil {
 		return nil, err
 	}
-	if apiClient.instance = tgt.ManagedInstance("bastion"); apiClient.instance == nil {
-		return nil, fmt.Errorf("unable to find a bastion instance to connect to")
-	}
 	
 	apiClient.ctx = context.Background()
 	// client used for authentication
-	if apiClient.restAuthClient, err = apiClient.instance.RestApiClient(apiClient.ctx); err != nil {
+	if apiClient.restAuthClient, err = node.RestApiClient(apiClient.ctx); err != nil {
 		return nil, err
 	}
 	// client used for api invocation requests
-	if apiClient.restApiClient, err = apiClient.instance.RestApiClient(apiClient.ctx); err != nil {
+	if apiClient.restApiClient, err = node.RestApiClient(apiClient.ctx); err != nil {
 		return nil, err
 	}
 	apiClient.restApiClient = apiClient.restApiClient.WithAuthCrypt(apiClient)
@@ -108,21 +101,7 @@ func NewApiClientFromTarget(deviceContext config.DeviceContext, tgt *target.Targ
 }
 
 func (a *ApiClient) IsRunning() bool {
-
-	var (
-		err error
-	
-		instanceState cloud.InstanceState
-	)
-
-	if a.tgt.Status() != target.Running {
-		return false
-	}
-	if instanceState, err = a.instance.Instance.State(); err != nil {
-		logger.DebugMessage("mycsnode.ApiClient.IsRunning(): ERROR! %s", err.Error())
-		return false
-	}
-	return instanceState == cloud.StateRunning
+	return a.node.GetStatus() == "running"
 }
 
 func (a *ApiClient) Authenticate() (bool, error) {
@@ -166,7 +145,7 @@ func (a *ApiClient) Authenticate() (bool, error) {
 			"ApiClient.Authenticate(): created auth request key with nonce '%d': %# v", 
 			authReqKey.Nonce, authReqKey)
 	
-		if authReqKeyEncrypted, err = a.tgtPublicKey.EncryptBase64(authReqKeyJSON); err != nil {
+		if authReqKeyEncrypted, err = a.nodePublicKey.EncryptBase64(authReqKeyJSON); err != nil {
 			return false, err
 		}
 		authRequest := &AuthRequest{
@@ -253,14 +232,14 @@ func (a *ApiClient) GetSpaceUsers() ([]*userspace.SpaceUser, error) {
 
 	if err = a.restApiClient.NewRequest(request).DoGet(response); err != nil {
 		logger.DebugMessage(
-			"ApiClient.getUsers(): ERROR! HTTP error: %s", 
+			"ApiClient.GetSpaceUsers(): ERROR! HTTP error: %s", 
 			err.Error())
 
 		// todo: return a custom error type 
 		// with parsed error object
 		if response.Error != nil && len(errorResponse.ErrorMessage) > 0 {
 			logger.DebugMessage(
-				"MyCSRestApi.GetSpaceUsers(): Error message body: Error Code: %d; Error Message: %s", 
+				"ApiClient.GetSpaceUsers(): Error message body: Error Code: %d; Error Message: %s", 
 				errorResponse.ErrorCode, errorResponse.ErrorMessage)
 
 			return nil, fmt.Errorf(errorResponse.ErrorMessage)
@@ -271,14 +250,103 @@ func (a *ApiClient) GetSpaceUsers() ([]*userspace.SpaceUser, error) {
 	return users, nil
 }
 
+func (a *ApiClient) GetSpaceUser(userID string) (*userspace.SpaceUser, error) {
+
+	var (
+		err error
+	)
+
+	user := userspace.SpaceUser{}
+	errorResponse := ErrorResponse{}
+
+	request := &rest.Request{
+		Path: fmt.Sprintf("/user/%s", userID),
+		Headers: rest.NV{
+			"X-Auth-Key": a.authIDKey,
+		},
+	}
+	response := &rest.Response{
+		Body: &user,
+		Error: &errorResponse,
+	}
+
+	if err = a.restApiClient.NewRequest(request).DoGet(response); err != nil {
+		logger.DebugMessage(
+			"ApiClient.GetSpaceUser(): ERROR! HTTP error: %s", 
+			err.Error())
+
+		// todo: return a custom error type 
+		// with parsed error object
+		if response.Error != nil && len(errorResponse.ErrorMessage) > 0 {
+			logger.DebugMessage(
+				"ApiClient.GetSpaceUser(): Error message body: Error Code: %d; Error Message: %s", 
+				errorResponse.ErrorCode, errorResponse.ErrorMessage)
+
+			return nil, fmt.Errorf(errorResponse.ErrorMessage)
+		} else {
+			return nil, err
+		}
+	}
+	return &user, nil
+}
+
+func (a *ApiClient) UpdateSpaceUser(userID string, enableAdmin, enableSiteBlocking bool) (*userspace.SpaceUser, error) {
+	
+	var (
+		err error
+	)
+
+	type requestBody struct {
+		IsSpaceAdmin       bool `json:"isSpaceAdmin"`
+		EnableSiteBlocking bool `json:"enableSiteBlocking"`
+	}
+
+	user := userspace.SpaceUser{}
+	errorResponse := ErrorResponse{}
+
+	request := &rest.Request{
+		Path: fmt.Sprintf("/user/%s", userID),
+		Headers: rest.NV{
+			"X-Auth-Key": a.authIDKey,
+		},
+		Body: &requestBody{ 
+			IsSpaceAdmin: enableAdmin,
+			EnableSiteBlocking: enableSiteBlocking,
+		},
+	}
+	response := &rest.Response{
+		Body: &user,
+		Error: &errorResponse,
+	}
+
+	if err = a.restApiClient.NewRequest(request).DoPut(response); err != nil {
+		logger.DebugMessage(
+			"ApiClient.UpdateSpaceUser(): ERROR! HTTP error: %s", 
+			err.Error())
+
+		// todo: return a custom error type 
+		// with parsed error object
+		if response.Error != nil && len(errorResponse.ErrorMessage) > 0 {
+			logger.DebugMessage(
+				"ApiClient.UpdateSpaceUser(): Error message body: Error Code: %d; Error Message: %s", 
+				errorResponse.ErrorCode, errorResponse.ErrorMessage)
+
+			return nil, fmt.Errorf(errorResponse.ErrorMessage)
+		} else {
+			return nil, err
+		}
+	}
+	return &user, nil
+}
+
 func (a *ApiClient) GetUserDevice(userID, deviceID string) (*userspace.Device, error) {
 
 	var (
 		err error
 	)
 
-	device := &userspace.Device{}
-	errorResponse := &ErrorResponse{}
+	device := userspace.Device{}
+	errorResponse := ErrorResponse{}
 
 	request := &rest.Request{
 		Path: fmt.Sprintf("/user/%s/device/%s", userID, deviceID),
@@ -293,14 +361,14 @@ func (a *ApiClient) GetUserDevice(userID, deviceID string) (*userspace.Device, e
 
 	if err = a.restApiClient.NewRequest(request).DoGet(response); err != nil {
 		logger.DebugMessage(
-			"ApiClient.getUsers(): ERROR! HTTP error: %s", 
+			"ApiClient.GetUserDevice(): ERROR! HTTP error: %s", 
 			err.Error())
 
 		// todo: return a custom error type 
 		// with parsed error object
 		if response.Error != nil && len(errorResponse.ErrorMessage) > 0 {
 			logger.DebugMessage(
-				"MyCSRestApi.GetSpaceUsers(): Error message body: Error Code: %d; Error Message: %s", 
+				"ApiClient.GetUserDevice(): Error message body: Error Code: %d; Error Message: %s", 
 				errorResponse.ErrorCode, errorResponse.ErrorMessage)
 
 			return nil, fmt.Errorf(errorResponse.ErrorMessage)
@@ -308,7 +376,7 @@ func (a *ApiClient) GetUserDevice(userID, deviceID string) (*userspace.Device, e
 			return nil, err
 		}
 	}
-	return device, nil
+	return &device, nil
 }
 
 func (a *ApiClient) EnableUserDevice(userID, deviceID string, enabled bool) (*userspace.Device, error) {
@@ -321,8 +389,8 @@ func (a *ApiClient) EnableUserDevice(userID, deviceID string, enabled bool) (*us
 		Enabled bool `json:"enabled,omitempty"`
 	}
 
-	device := &userspace.Device{}
-	errorResponse := &ErrorResponse{}
+	device := userspace.Device{}
+	errorResponse := ErrorResponse{}
 
 	request := &rest.Request{
 		Path: fmt.Sprintf("/user/%s/device/%s", userID, deviceID),
@@ -338,14 +406,14 @@ func (a *ApiClient) EnableUserDevice(userID, deviceID string, enabled bool) (*us
 
 	if err = a.restApiClient.NewRequest(request).DoPut(response); err != nil {
 		logger.DebugMessage(
-			"ApiClient.getUsers(): ERROR! HTTP error: %s", 
+			"ApiClient.EnableUserDevice(): ERROR! HTTP error: %s", 
 			err.Error())
 
 		// todo: return a custom error type 
 		// with parsed error object
 		if response.Error != nil && len(errorResponse.ErrorMessage) > 0 {
 			logger.DebugMessage(
-				"MyCSRestApi.GetSpaceUsers(): Error message body: Error Code: %d; Error Message: %s", 
+				"ApiClient.EnableUserDevice(): Error message body: Error Code: %d; Error Message: %s", 
 				errorResponse.ErrorCode, errorResponse.ErrorMessage)
 
 			return nil, fmt.Errorf(errorResponse.ErrorMessage)
@@ -353,7 +421,7 @@ func (a *ApiClient) EnableUserDevice(userID, deviceID string, enabled bool) (*us
 			return nil, err
 		}
 	}
-	return device, nil
+	return &device, nil
 }
 
 //

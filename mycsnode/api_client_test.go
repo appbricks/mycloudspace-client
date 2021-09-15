@@ -61,7 +61,7 @@ var _ = Describe("MyCS Node API Client", func() {
 	It("Creates an API client and authenticates", func() {
 		handler := newMyCSMockServiceHandler(deviceContext, testTarget)
 
-		apiClient, err := mycsnode.NewApiClientFromTarget(deviceContext, testTarget)
+		apiClient, err := mycsnode.NewApiClient(deviceContext, testTarget)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(apiClient.IsRunning()).To(BeTrue())
 
@@ -100,7 +100,7 @@ var _ = Describe("MyCS Node API Client", func() {
 
 		BeforeEach(func() {
 			handler = newMyCSMockServiceHandler(deviceContext, testTarget)
-			apiClient, err = mycsnode.NewApiClientFromTarget(deviceContext, testTarget)
+			apiClient, err = mycsnode.NewApiClient(deviceContext, testTarget)
 			Expect(err).ToNot(HaveOccurred())
 
 			testServer.PushRequest().
@@ -115,6 +115,7 @@ var _ = Describe("MyCS Node API Client", func() {
 			
 			testServer.PushRequest().
 				ExpectPath("/users").
+				ExpectMethod("GET").
 				WithCallbackTest(utils_mocks.HandleAuthHeaders(apiClient, "", usersSuccessResponse))
 
 			users, err := apiClient.GetSpaceUsers()
@@ -124,15 +125,70 @@ var _ = Describe("MyCS Node API Client", func() {
 
 			Expect(users[0].UserID).To(Equal("d40db93c-ad98-4177-93e5-1cfe9da7b000"))
 			Expect(users[0].Name).To(Equal("norm"))
-			Expect(users[0].IsOwner).To(BeFalse())
-			Expect(users[0].AccessType).To(Equal("guest"))
+			Expect(users[0].IsOwner).To(BeTrue())
+			Expect(users[0].IsAdmin).To(BeTrue())
 			Expect(len(users[0].Devices)).To(Equal(3))
+		})
+
+		It("Call the api to get a user activated for the target", func() {
+
+			testServer.PushRequest().
+				ExpectPath("/user/d40db93c-ad98-4177-93e5-1cfe9da7b000").
+				ExpectMethod("GET").
+				RespondWithError(authErrorResponse, 400)
+
+			_, err = apiClient.GetSpaceUser("d40db93c-ad98-4177-93e5-1cfe9da7b000")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("Request Error"))
+			Expect(testServer.Done()).To(BeTrue())
+
+			testServer.PushRequest().
+				ExpectPath("/user/d40db93c-ad98-4177-93e5-1cfe9da7b000").
+				ExpectMethod("GET").
+				WithCallbackTest(utils_mocks.HandleAuthHeaders(apiClient, "", userSuccessResponse))
+
+			user, err := apiClient.GetSpaceUser("d40db93c-ad98-4177-93e5-1cfe9da7b000")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(testServer.Done()).To(BeTrue())
+
+			Expect(user.UserID).To(Equal("d40db93c-ad98-4177-93e5-1cfe9da7b000"))
+			Expect(user.Name).To(Equal("norm"))
+			Expect(user.IsOwner).To(BeTrue())
+			Expect(user.IsAdmin).To(BeTrue())
+		})
+
+		It("Call the api to update a users space configuration", func() {
+
+			testServer.PushRequest().
+				ExpectPath("/user/d40db93c-ad98-4177-93e5-1cfe9da7b000").
+				ExpectMethod("PUT").
+				RespondWithError(authErrorResponse, 400)
+
+			_, err = apiClient.UpdateSpaceUser("d40db93c-ad98-4177-93e5-1cfe9da7b000", false, true)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(Equal("Request Error"))
+			Expect(testServer.Done()).To(BeTrue())
+
+			testServer.PushRequest().
+				ExpectPath("/user/d40db93c-ad98-4177-93e5-1cfe9da7b000").
+				ExpectMethod("PUT").
+				WithCallbackTest(utils_mocks.HandleAuthHeaders(apiClient, updateUserSuccessResquest, updateUserSuccessResponse))
+
+			user, err := apiClient.UpdateSpaceUser("d40db93c-ad98-4177-93e5-1cfe9da7b000", false, true)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(testServer.Done()).To(BeTrue())
+
+			Expect(user.UserID).To(Equal("d40db93c-ad98-4177-93e5-1cfe9da7b000"))
+			Expect(user.Name).To(Equal("norm"))
+			Expect(user.IsOwner).To(BeTrue())
+			Expect(user.IsAdmin).To(BeFalse())
 		})
 
 		It("Call the api to get a user device activated for the target", func() {
 
 			testServer.PushRequest().
 				ExpectPath("/user/d40db93c-ad98-4177-93e5-1cfe9da7b000/device/d22da788-a6a0-4450-8ca3-276b46db34c3").
+				ExpectMethod("GET").
 				RespondWithError(authErrorResponse, 400)
 
 			_, err = apiClient.GetUserDevice("d40db93c-ad98-4177-93e5-1cfe9da7b000", "d22da788-a6a0-4450-8ca3-276b46db34c3")
@@ -142,6 +198,7 @@ var _ = Describe("MyCS Node API Client", func() {
 
 			testServer.PushRequest().
 				ExpectPath("/user/d40db93c-ad98-4177-93e5-1cfe9da7b000/device/d22da788-a6a0-4450-8ca3-276b46db34c3").
+				ExpectMethod("GET").
 				WithCallbackTest(utils_mocks.HandleAuthHeaders(apiClient, "", userDeviceSuccessResponse))
 
 			device, err := apiClient.GetUserDevice("d40db93c-ad98-4177-93e5-1cfe9da7b000", "d22da788-a6a0-4450-8ca3-276b46db34c3")
@@ -156,6 +213,7 @@ var _ = Describe("MyCS Node API Client", func() {
 
 			testServer.PushRequest().
 				ExpectPath("/user/d40db93c-ad98-4177-93e5-1cfe9da7b000/device/d22da788-a6a0-4450-8ca3-276b46db34c3").
+				ExpectMethod("PUT").
 				RespondWithError(authErrorResponse, 400)
 
 			_, err = apiClient.EnableUserDevice("d40db93c-ad98-4177-93e5-1cfe9da7b000", "d22da788-a6a0-4450-8ca3-276b46db34c3", true)
@@ -165,6 +223,7 @@ var _ = Describe("MyCS Node API Client", func() {
 
 			testServer.PushRequest().
 				ExpectPath("/user/d40db93c-ad98-4177-93e5-1cfe9da7b000/device/d22da788-a6a0-4450-8ca3-276b46db34c3").
+				ExpectMethod("PUT").
 				WithCallbackTest(utils_mocks.HandleAuthHeaders(apiClient, enableUserDeviceRequest, enableUserDeviceSuccessResponse))
 
 			device, err := apiClient.EnableUserDevice("d40db93c-ad98-4177-93e5-1cfe9da7b000", "d22da788-a6a0-4450-8ca3-276b46db34c3", true)
@@ -292,8 +351,8 @@ const usersSuccessResponse = `[
   {
     "userID": "d40db93c-ad98-4177-93e5-1cfe9da7b000",
     "name": "norm",
-    "isOwner": false,
-		"accessType": "guest",
+    "isOwner": true,
+		"isAdmin": true,
     "devices": [
       {
         "deviceID": "5e923ad4-e941-4de7-a811-74fd6aee5b55",
@@ -313,6 +372,22 @@ const usersSuccessResponse = `[
     ]
   }
 ]`
+const userSuccessResponse = `{
+	"userID": "d40db93c-ad98-4177-93e5-1cfe9da7b000",
+	"name": "norm",
+	"isOwner": true,
+	"isAdmin": true
+}`
+const updateUserSuccessResquest = `{
+	"isSpaceAdmin": false,
+	"enableSiteBlocking": true
+}`
+const updateUserSuccessResponse = `{
+	"userID": "d40db93c-ad98-4177-93e5-1cfe9da7b000",
+	"name": "norm",
+	"isOwner": true,
+	"isAdmin": false
+}`
 const userDeviceSuccessResponse = `{
 	"deviceID": "d22da788-a6a0-4450-8ca3-276b46db34c3",
 	"name": "Nigels's iPhone #2",
