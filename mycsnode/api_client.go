@@ -69,20 +69,20 @@ type ErrorResponse struct {
 	ErrorMessage string `json:"errorMessage"`
 }
 
-func NewApiClient(deviceContext config.DeviceContext, node userspace.SpaceNode) (*ApiClient, error) {
+func NewApiClient(config config.Config, node userspace.SpaceNode) (*ApiClient, error) {
 
 	var (
 		err error
 	)
 	
 	apiClient := &ApiClient{ 
-		deviceContext: deviceContext,
+		deviceContext: config.DeviceContext(),
 		node:          node,
 	}
 	if apiClient.nodePublicKey, err = crypto.NewPublicKeyFromPEM(node.GetPublicKey()); err != nil {
 		return nil, err
 	}
-	if apiClient.deviceRSAKey, err = crypto.NewRSAKeyFromPEM(deviceContext.GetDevice().RSAPrivateKey, nil); err != nil {
+	if apiClient.deviceRSAKey, err = crypto.NewRSAKeyFromPEM(apiClient.deviceContext.GetDevice().RSAPrivateKey, nil); err != nil {
 		return nil, err
 	}
 	

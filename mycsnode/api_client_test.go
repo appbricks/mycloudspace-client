@@ -29,9 +29,9 @@ var _ = Describe("MyCS Node API Client", func() {
 
 		outputBuffer, errorBuffer strings.Builder
 
-		cli           *utils_mocks.FakeCLI
-		testTarget    *target.Target
-		deviceContext config.DeviceContext
+		cli        *utils_mocks.FakeCLI
+		testTarget *target.Target
+		cfg        config.Config
 	)
 
 	BeforeEach(func() {
@@ -47,11 +47,13 @@ var _ = Describe("MyCS Node API Client", func() {
 		err = testTarget.LoadRemoteRefs()
 		Expect(err).ToNot(HaveOccurred())
 
-		deviceContext = config.NewDeviceContext()
+		deviceContext := config.NewDeviceContext()
 		_, err = deviceContext.NewDevice()
 		Expect(err).ToNot(HaveOccurred())
 		deviceContext.SetDeviceID(deviceIDKey, deviceID, deviceName)
 		deviceContext.SetLoggedInUser(loggedInUserID, "testuser");
+
+		cfg = cb_mocks.NewMockConfig(nil, deviceContext, nil)
 	})
 
 	AfterEach(func() {		
@@ -59,9 +61,8 @@ var _ = Describe("MyCS Node API Client", func() {
 	})
 
 	It("Creates an API client and authenticates", func() {
-		handler := newMyCSMockServiceHandler(deviceContext, testTarget)
-
-		apiClient, err := mycsnode.NewApiClient(deviceContext, testTarget)
+		handler := newMyCSMockServiceHandler(cfg, testTarget)
+		apiClient, err := mycsnode.NewApiClient(cfg, testTarget)		
 		Expect(err).ToNot(HaveOccurred())
 		Expect(apiClient.IsRunning()).To(BeTrue())
 
@@ -99,9 +100,10 @@ var _ = Describe("MyCS Node API Client", func() {
 		)
 
 		BeforeEach(func() {
-			handler = newMyCSMockServiceHandler(deviceContext, testTarget)
-			apiClient, err = mycsnode.NewApiClient(deviceContext, testTarget)
+			handler = newMyCSMockServiceHandler(cfg, testTarget)
+			apiClient, err = mycsnode.NewApiClient(cfg, testTarget)
 			Expect(err).ToNot(HaveOccurred())
+			Expect(apiClient.IsRunning()).To(BeTrue())
 
 			testServer.PushRequest().
 				ExpectPath("/auth").
@@ -264,7 +266,7 @@ type mycsMockServiceHandler struct {
 	authIDKey string
 }
 
-func newMyCSMockServiceHandler(dc config.DeviceContext, tgt *target.Target) *mycsMockServiceHandler {
+func newMyCSMockServiceHandler(cfg config.Config, tgt *target.Target) *mycsMockServiceHandler {
 	ecdhKey, err := crypto.NewECDHKey()
 	Expect(err).ToNot(HaveOccurred())
 
@@ -272,7 +274,7 @@ func newMyCSMockServiceHandler(dc config.DeviceContext, tgt *target.Target) *myc
 		tgt: tgt,
 		ecdhKey: ecdhKey,
 	}
-	if handler.devicePublicKey, err = crypto.NewPublicKeyFromPEM(dc.GetDevice().RSAPublicKey); err != nil {
+	if handler.devicePublicKey, err = crypto.NewPublicKeyFromPEM(cfg.DeviceContext().GetDevice().RSAPublicKey); err != nil {
 		return nil
 	}
 	return handler
