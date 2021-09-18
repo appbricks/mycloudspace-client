@@ -143,29 +143,35 @@ func (s *SpaceAPI) GetSpaces() ([]*userspace.Space, error) {
 // space nodes aggregates remote and local 
 // nodes and consolidates and duplicates
 type SpaceNodes struct {
-	// lookup for all remote and local space nodes
+	// lookup by key for all remote and local space nodes
 	spaceNodes map[string][]userspace.SpaceNode
+	// lookup by bastion url for all remote and local space nodes
+	spaceNodeByEndpoint map[string]userspace.SpaceNode
 	// remote space targets
 	sharedSpaces []*userspace.Space
 }
 
+// load only local owned targets
 func NewSpaceNodes(config config.Config) *SpaceNodes {
 	sn := &SpaceNodes{
-		spaceNodes: make(map[string][]userspace.SpaceNode),
-		sharedSpaces: []*userspace.Space{},
+		spaceNodes:          make(map[string][]userspace.SpaceNode),
+		spaceNodeByEndpoint: make(map[string]userspace.SpaceNode),
+		sharedSpaces:        []*userspace.Space{},
 	}
 	sn.consolidateRemoteAndLocalNodes(config)
 	return sn
 }
 
-func GetSpaceNodes(apiUrl string, config config.Config) (*SpaceNodes, error) {
+// load all owned and shared spaces
+func GetSpaceNodes(config config.Config, apiUrl string) (*SpaceNodes, error) {
 
 	var (
 		err error
 	)
 
 	sn := &SpaceNodes{
-		spaceNodes: make(map[string][]userspace.SpaceNode),
+		spaceNodes:          make(map[string][]userspace.SpaceNode),
+		spaceNodeByEndpoint: make(map[string]userspace.SpaceNode),
 	}
 	spaceAPI := NewSpaceAPI(api.NewGraphQLClient(apiUrl, "", config))
 	if sn.sharedSpaces, err = spaceAPI.GetSpaces(); err != nil {
@@ -179,10 +185,13 @@ func GetSpaceNodes(apiUrl string, config config.Config) (*SpaceNodes, error) {
 func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) {
 
 	var (
+		err    error
 		exists bool
 
 		node  userspace.SpaceNode
 		nodes []userspace.SpaceNode
+
+		endpoint string
 	)
 
 	spaceTargets := make(map[string]*target.Target)
@@ -192,6 +201,10 @@ func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) {
 		}
 		// all local targets should have unique keys
 		sn.spaceNodes[t.Key()] = []userspace.SpaceNode{t}
+		// add target if it has a valid endpoint
+		if endpoint, err = t.GetEndpoint(); err == nil {
+			sn.spaceNodeByEndpoint[endpoint] = t
+		}
 	}
 
 	j := len(sn.sharedSpaces) - 1
@@ -200,10 +213,10 @@ func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) {
 
 		// remote space node key may have duplicates so 
 		// create a list of of nodes with similar keys
+		addNode := true
 		if nodes, exists = sn.spaceNodes[node.Key()]; !exists {
 			sn.spaceNodes[node.Key()] = []userspace.SpaceNode{node}
 		} else {
-			addNode := true
 			for _, n := range nodes {
 				if node.GetSpaceID() == n.GetSpaceID() {
 					// if remote node and local node both have 
@@ -215,6 +228,10 @@ func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) {
 			if addNode {
 				sn.spaceNodes[node.Key()] = append(nodes, node)
 			}
+		}
+		// add space node if it has a valid endpoint
+		if endpoint, err = node.GetEndpoint(); addNode && err == nil {
+			sn.spaceNodeByEndpoint[endpoint] = node
 		}
 
 		// remove spaces that have a local target
@@ -244,6 +261,10 @@ func (sn *SpaceNodes) LookupSpaceNode(
 		}
 	}
 	return nil
+}
+
+func (sn *SpaceNodes) LookupSpaceNodeByEndpoint(endpoint string) userspace.SpaceNode {
+	return sn.spaceNodeByEndpoint[endpoint]
 }
 
 func (sn *SpaceNodes) GetAllSpaces() []userspace.SpaceNode {

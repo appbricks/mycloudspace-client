@@ -40,7 +40,6 @@ var _ = Describe("Space API", func() {
 
 		// space API client
 		spaceAPI = mycscloud.NewSpaceAPI(api.NewGraphQLClient("http://localhost:9096/", "", cfg))
-		// spaceAPI = mycscloud.NewSpaceAPI(api.NewGraphQLClient("https://ss3hvtbnzrasfbevhaoa4mlaiu.appsync-api.us-east-1.amazonaws.com/graphql", "", cfg))
 	})
 
 	AfterEach(func() {
@@ -142,7 +141,7 @@ var _ = Describe("Space API", func() {
 			ExpectJSONRequest(getSpaceNodesRequest).
 			RespondWith(getSpaceNodesResponse)
 
-		spaceNodes, err := mycscloud.GetSpaceNodes("http://localhost:9096/", cfg)
+		spaceNodes, err := mycscloud.GetSpaceNodes(cfg, "http://localhost:9096/")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(testServer.Done()).To(BeTrue())
 
@@ -167,6 +166,9 @@ var _ = Describe("Space API", func() {
 		Expect(spaceNode.GetSpaceID()).To(Equal("aa4ea679-ee74-4de6-852c-ccf7636bf644"))
 		spaceNode = spaceNodes.LookupSpaceNode("basic/aws/cc/cookbook", nil)
 		Expect(spaceNode.GetSpaceID()).To(Equal(""))
+		spaceNode = spaceNodes.LookupSpaceNodeByEndpoint("https://test2-wg-us-east-1.local")
+		Expect(spaceNode).NotTo(BeNil())
+		Expect(spaceNode.GetSpaceID()).To(Equal("aa4ea679-ee74-4de6-852c-ccf7636bf644"))
 	})
 })
 
