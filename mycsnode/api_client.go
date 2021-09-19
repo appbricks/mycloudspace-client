@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strconv"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/appbricks/cloud-builder/config"
@@ -15,6 +15,7 @@ import (
 	"github.com/mevansam/goutils/crypto"
 	"github.com/mevansam/goutils/logger"
 	"github.com/mevansam/goutils/rest"
+	"github.com/mevansam/goutils/utils"
 )
 
 type ApiClient struct {
@@ -34,6 +35,8 @@ type ApiClient struct {
 	authIDKey       string
 	keyRefreshMutex sync.Mutex
 
+	authExecTimer *utils.ExecTimer
+
 	// authenticated rest client for 
 	// api requests
 	restApiClient *rest.RestApiClient
@@ -41,7 +44,7 @@ type ApiClient struct {
 	// atomic flag indicating the
 	// authentication status of the
 	// rest api client
-	isAuthenticated int32
+	isAuthenticated bool
 	authTimeout     time.Duration
 }
 
@@ -69,12 +72,23 @@ type ErrorResponse struct {
 	ErrorMessage string `json:"errorMessage"`
 }
 
+var authRetryTimeout = time.Duration(500)
+
+func init() {
+	// override auth retry timeout
+	if timeout := os.Getenv("CBS_NODE_AUTH_RETRY_TIMEOUT"); len(timeout) > 0 {
+		if t, err := strconv.Atoi(timeout); err == nil {
+			authRetryTimeout = time.Duration(t)
+		}
+	}
+}
+
 func NewApiClient(config config.Config, node userspace.SpaceNode) (*ApiClient, error) {
 
 	var (
 		err error
 	)
-	
+
 	apiClient := &ApiClient{ 
 		deviceContext: config.DeviceContext(),
 		node:          node,
@@ -104,6 +118,39 @@ func (a *ApiClient) IsRunning() bool {
 	return a.node.GetStatus() == "running"
 }
 
+func (a *ApiClient) Start() error {
+	a.authExecTimer = utils.NewExecTimer(a.ctx, a.authCallback, false)
+	return a.authExecTimer.Start(0)
+}
+
+func (a *ApiClient) Stop() {
+	if a.authExecTimer != nil {
+		if err := a.authExecTimer.Stop(); err != nil {
+			logger.DebugMessage(
+				"ApiClient.Stop(): Auth execution timer stopped with err: %s", 
+				err.Error())	
+		}
+	}
+}
+
+func (a *ApiClient) authCallback() (time.Duration, error) {
+
+	var (
+		err error
+	)
+
+	if _, err = a.Authenticate(); err != nil {
+		logger.DebugMessage(
+			"ApiClient.authCallback(): Authentication failed with err: %s", 
+			err.Error())
+
+		return authRetryTimeout, nil
+	}
+	// re-authenticate 50ms before key expires
+	now := time.Now().UnixNano() / int64(time.Millisecond)
+	return time.Duration(a.keyTimeoutAt - now - 50), nil
+}
+
 func (a *ApiClient) Authenticate() (bool, error) {
 	
 	var (
@@ -125,6 +172,7 @@ func (a *ApiClient) Authenticate() (bool, error) {
 	a.keyRefreshMutex.Lock()
 	defer a.keyRefreshMutex.Unlock()
 
+	a.isAuthenticated = false
 	if a.crypt == nil || time.Now().UnixNano() >= a.keyTimeoutAt {
 
 		if ecdhKey, err = crypto.NewECDHKey(); err != nil {
@@ -206,7 +254,7 @@ func (a *ApiClient) Authenticate() (bool, error) {
 		a.keyTimeoutAt = authRespKey.TimeoutAt
 		a.authIDKey = authResponse.AuthIDKey
 	}
-	atomic.StoreInt32(&a.isAuthenticated, 1)
+	a.isAuthenticated = true
 	return true, nil
 }
 
@@ -429,7 +477,11 @@ func (a *ApiClient) EnableUserDevice(userID, deviceID string, enabled bool) (*us
 //
 
 func (a *ApiClient) IsAuthenticated() bool {
-	return atomic.LoadInt32(&a.isAuthenticated) == 1 && 
+
+	a.keyRefreshMutex.Lock()
+	defer a.keyRefreshMutex.Unlock()
+		
+	return a.isAuthenticated &&
 		(time.Now().UnixNano() / int64(time.Millisecond)) < a.keyTimeoutAt
 }
 

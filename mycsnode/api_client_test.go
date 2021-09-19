@@ -60,36 +60,84 @@ var _ = Describe("MyCS Node API Client", func() {
 		testServer.Stop()
 	})
 
-	It("Creates an API client and authenticates", func() {
-		handler := newMyCSMockServiceHandler(cfg, testTarget)
-		apiClient, err := mycsnode.NewApiClient(cfg, testTarget)		
-		Expect(err).ToNot(HaveOccurred())
-		Expect(apiClient.IsRunning()).To(BeTrue())
+	Context("Authentication", func() {
 
-		testServer.PushRequest().
-			ExpectPath("/auth").
-			WithCallbackTest(handler.sendAuthResponse)
+		It("Creates an API client and authenticates", func() {
+			handler := newMyCSMockServiceHandler(cfg, testTarget)
+			apiClient, err := mycsnode.NewApiClient(cfg, testTarget)		
+			Expect(err).ToNot(HaveOccurred())
+			Expect(apiClient.IsRunning()).To(BeTrue())
 
-		isAuthenticated, err := apiClient.Authenticate()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(isAuthenticated).To(BeTrue())
-		Expect(testServer.Done()).To(BeTrue())
-		validateEncryption(apiClient, handler)
+			testServer.PushRequest().
+				ExpectPath("/auth").
+				ExpectMethod("POST").
+				WithCallbackTest(handler.sendAuthResponse)
 
-		Expect(apiClient.IsAuthenticated()).To(BeTrue())
-		time.Sleep(500 * time.Millisecond)
-		Expect(apiClient.IsAuthenticated()).To(BeTrue())
-		time.Sleep(500 * time.Millisecond)
-		Expect(apiClient.IsAuthenticated()).To(BeFalse())
+			isAuthenticated, err := apiClient.Authenticate()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(isAuthenticated).To(BeTrue())
+			Expect(testServer.Done()).To(BeTrue())
+			validateEncryption(apiClient, handler)
 
-		testServer.PushRequest().
-			ExpectPath("/auth").
-			WithCallbackTest(handler.sendAuthResponse)
+			Expect(apiClient.IsAuthenticated()).To(BeTrue())
+			time.Sleep(500 * time.Millisecond)
+			Expect(apiClient.IsAuthenticated()).To(BeTrue())
+			time.Sleep(500 * time.Millisecond)
+			Expect(apiClient.IsAuthenticated()).To(BeFalse())
 
-		_, err = apiClient.Authenticate()
-		Expect(err).ToNot(HaveOccurred())
-		Expect(apiClient.IsAuthenticated()).To(BeTrue())
-		Expect(testServer.Done()).To(BeTrue())		
+			testServer.PushRequest().
+				ExpectPath("/auth").
+				ExpectMethod("POST").
+				WithCallbackTest(handler.sendAuthResponse)
+
+			_, err = apiClient.Authenticate()
+			Expect(err).ToNot(HaveOccurred())
+			Expect(apiClient.IsAuthenticated()).To(BeTrue())
+			Expect(testServer.Done()).To(BeTrue())
+		})
+
+		It("Creates an API client and keeps it authenticated in the background", func() {
+			handler := newMyCSMockServiceHandler(cfg, testTarget)
+			apiClient, err := mycsnode.NewApiClient(cfg, testTarget)		
+			Expect(err).ToNot(HaveOccurred())
+			Expect(apiClient.IsRunning()).To(BeTrue())
+
+			testServer.PushRequest().
+				ExpectPath("/auth").
+				ExpectMethod("POST").
+				RespondWithError(authErrorResponse, 400)
+			testServer.PushRequest().
+				ExpectPath("/auth").
+				ExpectMethod("POST").
+				RespondWithError(authErrorResponse, 400)
+			testServer.PushRequest().
+				ExpectPath("/auth").
+				ExpectMethod("POST").
+				WithCallbackTest(handler.sendAuthResponse)
+			testServer.PushRequest().
+				ExpectPath("/auth").
+				ExpectMethod("POST").
+				WithCallbackTest(handler.sendAuthResponse)
+			testServer.PushRequest().
+				ExpectPath("/auth").
+				ExpectMethod("POST").
+				WithCallbackTest(handler.sendAuthResponse)
+
+			err = apiClient.Start()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(apiClient.IsAuthenticated()).To(BeFalse())
+			time.Sleep(510 * time.Millisecond)
+			Expect(apiClient.IsAuthenticated()).To(BeFalse())
+			time.Sleep(500 * time.Millisecond)
+			Expect(apiClient.IsAuthenticated()).To(BeTrue())
+			time.Sleep(1000 * time.Millisecond)
+			Expect(apiClient.IsAuthenticated()).To(BeTrue())
+			time.Sleep(1000 * time.Millisecond)
+			Expect(apiClient.IsAuthenticated()).To(BeTrue())
+			Expect(testServer.Done()).To(BeTrue())
+			apiClient.Stop()
+			Expect(err).NotTo(HaveOccurred())
+		})
 	})
 
 	Context("API Calls", func() {
