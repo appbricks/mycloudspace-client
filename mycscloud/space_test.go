@@ -31,8 +31,9 @@ var _ = Describe("Space API", func() {
 		cfg, err = mycs_mocks.NewMockConfig(sourceDirPath)
 		Expect(err).NotTo(HaveOccurred())
 		
-		tgt = cfg.TargetContext().TargetSet().GetTargets()[0]
-
+		tgt, err = cfg.TargetContext().GetTarget("basic/aws/aa/cookbook")
+		Expect(err).ToNot(HaveOccurred())
+		
 		// start test server
 		testServer = test_server.NewMockHttpServer(9096)
 		testServer.ExpectCommonHeader("Authorization", "mock authorization token")

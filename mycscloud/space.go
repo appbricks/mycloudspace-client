@@ -176,13 +176,14 @@ func GetSpaceNodes(config config.Config, apiUrl string) (*SpaceNodes, error) {
 	spaceAPI := NewSpaceAPI(api.NewGraphQLClient(apiUrl, "", config))
 	if sn.sharedSpaces, err = spaceAPI.GetSpaces(); err != nil {
 		return nil, err
-	}	
-	
-	sn.consolidateRemoteAndLocalNodes(config)
+	}		
+	if err = sn.consolidateRemoteAndLocalNodes(config); err != nil {
+		return nil, err
+	}
 	return sn, nil
 }
 
-func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) {
+func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) error {
 
 	var (
 		err    error
@@ -196,6 +197,9 @@ func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) {
 
 	spaceTargets := make(map[string]*target.Target)
 	for _, t := range config.TargetContext().TargetSet().GetTargets() {
+		if err = t.LoadRemoteRefs(); err != nil {
+			return err
+		}
 		if (len(t.SpaceID) > 0) {
 			spaceTargets[t.SpaceID] = t
 		}
@@ -244,6 +248,7 @@ func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) {
 			j--
 		}
 	}
+	return nil
 }
 
 func (sn *SpaceNodes) LookupSpaceNode(

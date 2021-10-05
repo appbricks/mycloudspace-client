@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"strconv"
@@ -256,6 +257,34 @@ func (a *ApiClient) Authenticate() (bool, error) {
 	}
 	a.isAuthenticated = true
 	return true, nil
+}
+
+func (a *ApiClient) SetAuthorized(req *http.Request) error {
+
+	var (
+		err error
+
+		authToken         rest.AuthToken
+		encryptedReqToken string
+	)
+	
+	if a.IsAuthenticated() {
+		req.Header.Set("X-Auth-Key", a.authIDKey)
+		if authToken, err = rest.NewRequestAuthToken(a); err != nil {
+			return err
+		}
+		if err = authToken.SignTransportData([]string{"url", "X-Auth-Key"}, req); err != nil {
+			return err
+		}
+		if encryptedReqToken, err = authToken.GetEncryptedToken(); err != nil {
+			return err
+		}
+		req.Header.Set("X-Auth-Token", encryptedReqToken)
+
+	} else {
+		return fmt.Errorf("client not authenticated with mycs space node")
+	}
+	return nil
 }
 
 func (a *ApiClient) GetSpaceUsers() ([]*userspace.SpaceUser, error) {
