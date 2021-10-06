@@ -191,7 +191,9 @@ func (tsd *TailscaleDaemon) ConfigureHTTPClient(url string, httpClient *http.Cli
 				return err
 			}
 			certPool.AppendCertsFromPEM([]byte(localCARoot))
-			ccTransportHook.ccTransport.TLSClientConfig.RootCAs = certPool		
+			ccTransportHook.ccTransport.TLSClientConfig.RootCAs = certPool
+			ccTransportHook.ccTransport.TLSClientConfig.InsecureSkipVerify = false
+			ccTransportHook.ccTransport.TLSClientConfig.VerifyConnection = nil
 		}
 		httpClient.Transport = ccTransportHook
 
