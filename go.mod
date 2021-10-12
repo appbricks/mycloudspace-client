@@ -4,6 +4,8 @@ go 1.16
 
 replace github.com/appbricks/mycloudspace-client => ./
 
+replace github.com/appbricks/mycloudspace-common => ../mycloudspace-common
+
 replace github.com/appbricks/cloud-builder => ../cloud-builder
 
 replace github.com/mevansam/gocloud => ../../mevansam/gocloud
@@ -16,6 +18,7 @@ replace tailscale.com => ../tailscale
 
 require (
 	github.com/appbricks/cloud-builder v0.0.0-00010101000000-000000000000
+	github.com/appbricks/mycloudspace-common v0.0.0-00010101000000-000000000000
 	github.com/go-multierror/multierror v1.0.2
 	github.com/hasura/go-graphql-client v0.2.0
 	github.com/lestrrat-go/jwx v1.2.1
