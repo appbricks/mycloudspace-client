@@ -21,11 +21,11 @@ const (
 )
 
 var connStatusMsgs = []string{
-	"Connecting ",
-	"Connected ",
-	"Authenticating ",
-	"Authorizing ",
-	"Not connected ",
+	"Connecting",
+	"Connected",
+	"Authenticating",
+	"Authorizing",
+	"Not connected",
 }
 
 type TailscaleClient struct {
