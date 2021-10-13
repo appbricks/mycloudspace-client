@@ -1,10 +1,13 @@
 package tailscale
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -19,6 +22,7 @@ import (
 
 	"github.com/go-multierror/multierror"
 	"github.com/sirupsen/logrus"
+	"golang.zx2c4.com/wireguard/device"
 	"tailscale.com/control/controlclient"
 	"tailscale.com/ipn"
 	"tailscale.com/ipn/ipnserver"
@@ -64,6 +68,9 @@ type TailscaleDaemon struct {
 	// MyCS space nodes providing control services
 	spaceNodes *mycscloud.SpaceNodes
 
+	// wireguard control service
+	wgDevice *device.Device
+	
 	// tailscale services cancel func
 	cancel context.CancelFunc
 
@@ -146,6 +153,51 @@ func (tsd *TailscaleDaemon) Stop() {
 func (tsd *TailscaleDaemon) Cleanup() {
 	dns.Cleanup(log.Printf, tsd.tunname)
 	router.Cleanup(log.Printf, tsd.tunname)
+}
+
+func (tsd *TailscaleDaemon) BytesTransmitted() (int64, int64, error) {
+
+	var (
+		err error
+
+		val, sent, recd int64
+	)
+	
+	reader, writer := io.Pipe()
+	go func() {
+		defer writer.Close()
+		err = tsd.wgDevice.IpcGetOperation(writer)
+	}()	
+
+	s := bufio.NewScanner(reader)
+	for s.Scan() {
+
+		if err != nil {
+			// check for error 
+			// during write to pipe
+			return 0, 0, err
+		}
+
+		b := s.Bytes()
+		if len(b) == 0 {
+			// Empty line, done parsing.
+			break
+		}
+		// All data is in key=value format.
+		kvs := bytes.Split(b, []byte("="))		
+
+		switch string(kvs[0]) {
+		case "tx_bytes":
+			if val, err = strconv.ParseInt(string(kvs[1]), 10, 64); err == nil {
+				sent = sent + val
+			}
+		case "rx_bytes":
+			if val, err = strconv.ParseInt(string(kvs[1]), 10, 64); err == nil {
+				recd = recd + val
+			}
+		}
+	}
+	return sent, recd, nil
 }
 
 // io.Writer intercepts tailscale log output 
@@ -423,6 +475,10 @@ func  (tsd *TailscaleDaemon) tryEngine(logf logger.Logf, linkMon *monitor.Mon, n
 	if err != nil {
 		return nil, useNetstack, err
 	}
+
+	// MyCS: save underlying wireguard device
+	tsd.wgDevice = wgengine.GetWireguardDevice(e)
+	
 	return e, useNetstack, nil
 }
 
