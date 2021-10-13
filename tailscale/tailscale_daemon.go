@@ -17,7 +17,7 @@ import (
 	"github.com/appbricks/cloud-builder/userspace"
 	"github.com/appbricks/mycloudspace-client/mycscloud"
 	"github.com/appbricks/mycloudspace-client/mycsnode"
-	cb_logger "github.com/mevansam/goutils/logger"
+	"github.com/mevansam/goutils/logger"
 
 	tailscale_common "github.com/appbricks/mycloudspace-common/tailscale"
 )
@@ -114,10 +114,10 @@ func (tsd *TailscaleDaemon) BytesTransmitted() (int64, int64, error) {
 func (tsd *TailscaleDaemon) Write(p []byte) (n int, err error) {
 	lastChar := len(p) - 1
 	if p[lastChar] == '\n' {
-		cb_logger.DebugMessage("TailscaleDaemon: %s", string(p[:lastChar]))
+		logger.DebugMessage("TailscaleDaemon: %s", string(p[:lastChar]))
 		return lastChar, nil
 	} else {
-		cb_logger.DebugMessage("TailscaleDaemon: %s", string(p))
+		logger.DebugMessage("TailscaleDaemon: %s", string(p))
 		return len(p), nil
 	}
 }
@@ -134,7 +134,7 @@ func (tsd *TailscaleDaemon) ConfigureHTTPClient(url string, httpClient *http.Cli
 
 	if spaceNode := tsd.spaceNodes.LookupSpaceNodeByEndpoint(url); spaceNode != nil {
 
-		cb_logger.TraceMessage(
+		logger.TraceMessage(
 			"TailscaleDaemon.ConfigureHTTPClient(): Authorizing access to space: %s", 
 			spaceNode.Key())
 
