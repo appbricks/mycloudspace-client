@@ -201,18 +201,19 @@ func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) error
 			// only recipes with a bastion instance is considered
 			// a space. TBD: this criteria should be revisited
 			
-			if err = t.LoadRemoteRefs(); err != nil {
-				return err
-			}
 			if (len(t.SpaceID) > 0) {
 				spaceTargets[t.SpaceID] = t
 			}
 			// all local targets should have unique keys
 			sn.spaceNodes[t.Key()] = []userspace.SpaceNode{t}
 			// add target if it has a valid endpoint
-			if endpoint, err = t.GetEndpoint(); err == nil {
-				sn.spaceNodeByEndpoint[endpoint] = t
-			}	
+			if err = t.LoadRemoteRefs(); err == nil {
+				if endpoint, err = t.GetEndpoint(); err == nil {
+					sn.spaceNodeByEndpoint[endpoint] = t
+				}	
+			} else {
+				logger.DebugMessage("SpaceNodes.consolidateRemoteAndLocalNodes(): Failed to load remote state for target: %s", t.Key())
+			}
 		}
 	}
 
