@@ -158,7 +158,7 @@ func NewSpaceNodes(config config.Config) *SpaceNodes {
 		spaceNodeByEndpoint: make(map[string]userspace.SpaceNode),
 		sharedSpaces:        []*userspace.Space{},
 	}
-	sn.consolidateRemoteAndLocalNodes(config)
+	_ = sn.consolidateRemoteAndLocalNodes(config)
 	return sn
 }
 
