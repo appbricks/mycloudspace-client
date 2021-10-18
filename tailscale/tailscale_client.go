@@ -61,6 +61,7 @@ func (tsc *TailscaleClient) Connect() error {
 	return cli.RunUp(
 		tsc.ctx, server, 
 		map[string]interface{}{
+			"reset": true,
 			"acceptRoutes": true,
 		},
 	)
