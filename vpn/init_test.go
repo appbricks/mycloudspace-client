@@ -1,4 +1,4 @@
-package mycsnode_test
+package vpn_test
 
 import (
 	"testing"
@@ -9,11 +9,11 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestMyCSNode(t *testing.T) {
+func TestVPN(t *testing.T) {
 	logger.Initialize()
 
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "mycsnode")
+	RunSpecs(t, "vpn")
 }
 
 var _ = AfterSuite(func() {
