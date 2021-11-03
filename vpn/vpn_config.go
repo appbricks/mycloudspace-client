@@ -9,7 +9,7 @@ import (
 	vpn_common "github.com/appbricks/mycloudspace-common/vpn"
 )
 
-func NewVPNConfigReader(apiClient *mycsnode.ApiClient) (vpn_common.ConfigData, error) {
+func NewVPNConfigData(apiClient *mycsnode.ApiClient) (vpn_common.ConfigData, error) {
 
 	var (
 		err error
@@ -29,6 +29,8 @@ func NewVPNConfigReader(apiClient *mycsnode.ApiClient) (vpn_common.ConfigData, e
 		switch cfg.VPNType {
 		case "wireguard":
 			wgConfigData := &WireguardConfigData{
+				apiClient:  apiClient,
+				name:       cfg.Name,
 				privateKey: cfg.LoggedInUser.WGPrivateKey,
 			}
 			if err = json.Unmarshal(cfg.RawConfig, wgConfigData); err != nil {
@@ -41,9 +43,11 @@ func NewVPNConfigReader(apiClient *mycsnode.ApiClient) (vpn_common.ConfigData, e
 		}
 
 	} else {
+		// if no VPN config provided then attempt
+		// to download a static configuration
 
 		if tgt, ok = apiClient.GetSpaceNode().(*target.Target); !ok {
-			return nil, fmt.Errorf("cannot connect to a non-wireguard space node that is not an owned target")
+			return nil, fmt.Errorf("cannot connect to a space node that is not an owned target")
 		}
 		instance := tgt.ManagedInstance("bastion")
 		if instance == nil {

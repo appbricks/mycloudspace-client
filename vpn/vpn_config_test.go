@@ -76,7 +76,7 @@ var _ = Describe("VPN Configuration", func() {
 			).
 			RespondWith(wgConfigDataText)
 
-		configData, err := vpn.NewVPNConfigReader(apiClient)
+		configData, err := vpn.NewVPNConfigData(apiClient)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(configData).ToNot(BeNil())
 		Expect(string(configData.Data())).To(Equal(wgConfigDataText))
@@ -95,7 +95,7 @@ var _ = Describe("VPN Configuration", func() {
 				),
 			)
 
-		configData, err := vpn.NewVPNConfigReader(apiClient)
+		configData, err := vpn.NewVPNConfigData(apiClient)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(configData).ToNot(BeNil())	
 

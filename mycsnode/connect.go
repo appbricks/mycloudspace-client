@@ -80,5 +80,40 @@ func (a *ApiClient) Connect() (*VPNConfig, error) {
 }
 
 func (a *ApiClient) Disconnect() error {
+
+	var (
+		err error
+	)
+
+	errorResponse := ErrorResponse{}
+
+	request := &rest.Request{
+		Path: "/connect",
+		Headers: rest.NV{
+			"X-Auth-Key": a.authIDKey,
+		},
+	}
+	response := &rest.Response{
+		Body: &struct{}{},
+		Error: &errorResponse,
+	}
+
+	if err = a.restApiClient.NewRequest(request).DoDelete(response); err != nil {
+		logger.DebugMessage(
+			"ApiClient.UpdateSpaceUser(): ERROR! HTTP error: %s", 
+			err.Error())
+
+		// todo: return a custom error type 
+		// with parsed error object
+		if response.Error != nil && len(errorResponse.ErrorMessage) > 0 {
+			logger.DebugMessage(
+				"ApiClient.UpdateSpaceUser(): Error message body: Error Code: %d; Error Message: %s", 
+				errorResponse.ErrorCode, errorResponse.ErrorMessage)
+
+			return fmt.Errorf(errorResponse.ErrorMessage)
+		} else {
+			return err
+		}
+	}
 	return nil
 }

@@ -4,9 +4,13 @@ import (
 	"bytes"
 	"fmt"
 	"strings"
+
+	"github.com/appbricks/mycloudspace-client/mycsnode"
 )
 
 type WireguardConfigData struct {
+	apiClient *mycsnode.ApiClient
+
 	name string
 
 	privateKey string
@@ -74,4 +78,8 @@ PersistentKeepalive = %d
 	}
 
 	return configText.Bytes()
+}
+
+func (c *WireguardConfigData) Delete() error {
+	return c.apiClient.Disconnect()
 }

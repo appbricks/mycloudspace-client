@@ -274,6 +274,18 @@ var _ = Describe("MyCS Node API Client", func() {
 			Expect(config.Name).To(Equal("inceptor-us-east-1"))
 			Expect(config.VPNType).To(Equal("wireguard"))
 			Expect(config.RawConfig).NotTo(BeNil())
+
+			mockNodeService.TestServer.PushRequest().
+				ExpectPath("/connect").
+				ExpectMethod("DELETE").
+				WithCallbackTest(
+					utils_mocks.HandleAuthHeaders(apiClient, "", "{}"),
+				)
+
+			err = apiClient.Disconnect()
+			Expect(err).ToNot(HaveOccurred())
+
+			mockNodeService.TestServer.Done()
 		})
 	})
 })
