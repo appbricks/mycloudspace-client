@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/appbricks/cloud-builder/auth"
 	"github.com/appbricks/cloud-builder/config"
 	"github.com/appbricks/cloud-builder/userspace"
 	"github.com/mevansam/goutils/crypto"
@@ -285,6 +286,14 @@ func (a *ApiClient) SetAuthorized(req *http.Request) error {
 		return fmt.Errorf("client not authenticated with mycs space node")
 	}
 	return nil
+}
+
+func (a *ApiClient) GetLoggedInUserRole() auth.Role {
+	return auth.RoleFromContext(a.deviceContext, a.node)
+}
+
+func (a *ApiClient) GetSpaceNode() userspace.SpaceNode {
+	return a.node
 }
 
 func (a *ApiClient) GetSpaceUsers() ([]*userspace.SpaceUser, error) {
