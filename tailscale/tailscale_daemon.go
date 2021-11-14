@@ -123,7 +123,6 @@ func (tsd *TailscaleDaemon) Write(p []byte) (n int, err error) {
 }
 
 // MyCS Hook
-
 func (tsd *TailscaleDaemon) ConfigureHTTPClient(url string, httpClient *http.Client) error {
 
 	var (
