@@ -211,12 +211,12 @@ func (a *ApiClient) Authenticate() (bool, error) {
 			Error: &errorResponse,
 		}
 		if err = a.restAuthClient.NewRequest(request).DoPost(response); err != nil {
-			logger.DebugMessage(
-				"ApiClient.Authenticate(): ERROR! HTTP error: %s", 
+			logger.ErrorMessage(
+				"ApiClient.Authenticate(): HTTP error: %s", 
 				err.Error())
 	
 			if len(errorResponse.ErrorMessage) > 0 {
-				logger.DebugMessage(
+				logger.ErrorMessage(
 					"ApiClient.Authenticate(): Error message body: Error Code: %d; Error Message: %s", 
 					errorResponse.ErrorCode, errorResponse.ErrorMessage)
 		
@@ -312,14 +312,14 @@ func (a *ApiClient) GetSpaceUsers() ([]*userspace.SpaceUser, error) {
 	}
 
 	if err = a.restApiClient.NewRequest(request).DoGet(response); err != nil {
-		logger.DebugMessage(
-			"ApiClient.GetSpaceUsers(): ERROR! HTTP error: %s", 
+		logger.ErrorMessage(
+			"ApiClient.GetSpaceUsers(): HTTP error: %s", 
 			err.Error())
 
 		// todo: return a custom error type 
 		// with parsed error object
 		if response.Error != nil && len(errorResponse.ErrorMessage) > 0 {
-			logger.DebugMessage(
+			logger.ErrorMessage(
 				"ApiClient.GetSpaceUsers(): Error message body: Error Code: %d; Error Message: %s", 
 				errorResponse.ErrorCode, errorResponse.ErrorMessage)
 
@@ -352,14 +352,14 @@ func (a *ApiClient) GetSpaceUser(userID string) (*userspace.SpaceUser, error) {
 	}
 
 	if err = a.restApiClient.NewRequest(request).DoGet(response); err != nil {
-		logger.DebugMessage(
-			"ApiClient.GetSpaceUser(): ERROR! HTTP error: %s", 
+		logger.ErrorMessage(
+			"ApiClient.GetSpaceUser(): HTTP error: %s", 
 			err.Error())
 
 		// todo: return a custom error type 
 		// with parsed error object
 		if response.Error != nil && len(errorResponse.ErrorMessage) > 0 {
-			logger.DebugMessage(
+			logger.ErrorMessage(
 				"ApiClient.GetSpaceUser(): Error message body: Error Code: %d; Error Message: %s", 
 				errorResponse.ErrorCode, errorResponse.ErrorMessage)
 
@@ -401,14 +401,14 @@ func (a *ApiClient) UpdateSpaceUser(userID string, enableAdmin, enableSiteBlocki
 	}
 
 	if err = a.restApiClient.NewRequest(request).DoPut(response); err != nil {
-		logger.DebugMessage(
-			"ApiClient.UpdateSpaceUser(): ERROR! HTTP error: %s", 
+		logger.ErrorMessage(
+			"ApiClient.UpdateSpaceUser(): HTTP error: %s", 
 			err.Error())
 
 		// todo: return a custom error type 
 		// with parsed error object
 		if response.Error != nil && len(errorResponse.ErrorMessage) > 0 {
-			logger.DebugMessage(
+			logger.ErrorMessage(
 				"ApiClient.UpdateSpaceUser(): Error message body: Error Code: %d; Error Message: %s", 
 				errorResponse.ErrorCode, errorResponse.ErrorMessage)
 
@@ -441,14 +441,14 @@ func (a *ApiClient) GetUserDevice(userID, deviceID string) (*userspace.Device, e
 	}
 
 	if err = a.restApiClient.NewRequest(request).DoGet(response); err != nil {
-		logger.DebugMessage(
-			"ApiClient.GetUserDevice(): ERROR! HTTP error: %s", 
+		logger.ErrorMessage(
+			"ApiClient.GetUserDevice(): HTTP error: %s", 
 			err.Error())
 
 		// todo: return a custom error type 
 		// with parsed error object
 		if response.Error != nil && len(errorResponse.ErrorMessage) > 0 {
-			logger.DebugMessage(
+			logger.ErrorMessage(
 				"ApiClient.GetUserDevice(): Error message body: Error Code: %d; Error Message: %s", 
 				errorResponse.ErrorCode, errorResponse.ErrorMessage)
 
@@ -486,14 +486,14 @@ func (a *ApiClient) EnableUserDevice(userID, deviceID string, enabled bool) (*us
 	}
 
 	if err = a.restApiClient.NewRequest(request).DoPut(response); err != nil {
-		logger.DebugMessage(
-			"ApiClient.EnableUserDevice(): ERROR! HTTP error: %s", 
+		logger.ErrorMessage(
+			"ApiClient.EnableUserDevice():  HTTP error: %s", 
 			err.Error())
 
 		// todo: return a custom error type 
 		// with parsed error object
 		if response.Error != nil && len(errorResponse.ErrorMessage) > 0 {
-			logger.DebugMessage(
+			logger.ErrorMessage(
 				"ApiClient.EnableUserDevice(): Error message body: Error Code: %d; Error Message: %s", 
 				errorResponse.ErrorCode, errorResponse.ErrorMessage)
 

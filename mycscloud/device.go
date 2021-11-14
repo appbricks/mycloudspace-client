@@ -62,25 +62,25 @@ func (d *DeviceAPI) UpdateDeviceContext(deviceContext config.DeviceContext) erro
 		"idKey": graphql.String(deviceContext.GetDeviceIDKey()),
 	}
 	if err := d.apiClient.Query(context.Background(), &query, variables); err != nil {
-		logger.DebugMessage("DeviceAPI: authDevice query returned an error: %s", err.Error())
+		logger.ErrorMessage("DeviceAPI.UpdateDeviceContext(): authDevice query returned an error: %s", err.Error())
 		return err
 	}
-	logger.TraceMessage("DeviceAPI: authDevice query returned response: %# v", query)
+	logger.TraceMessage("DeviceAPI.UpdateDeviceContext(): authDevice query returned response: %# v", query)
 
 	if string(query.AuthDevice.AccessType) == "admin" {
 		// check if logged in user is the admin
 		userID, _ = deviceContext.GetOwnerUserID()
 		if deviceContext.GetLoggedInUserID() != userID {
-			logger.DebugMessage(
-				"DeviceAPI: ERROR: authDevice query returned \"admin\" access type for a user that is not the device owner.",
+			logger.ErrorMessage(
+				"DeviceAPI.UpdateDeviceContext(): authDevice query returned \"admin\" access type for a user that is not the device owner.",
 			)
 			return fmt.Errorf("invalid device context")
 		}
 
 		// check if authorized device matches device in context
 		if string(query.AuthDevice.Device.DeviceID) != deviceID {
-			logger.DebugMessage(
-				"DeviceAPI: ERROR: authDevice query returned device ID '%s' but the device context device id was '%s'.",
+			logger.ErrorMessage(
+				"DeviceAPI.UpdateDeviceContext(): authDevice query returned device ID '%s' but the device context device id was '%s'.",
 				query.AuthDevice.Device.DeviceID, deviceID,
 			)
 			return fmt.Errorf("invalid device context")
@@ -97,8 +97,8 @@ func (d *DeviceAPI) UpdateDeviceContext(deviceContext config.DeviceContext) erro
 			if bool(deviceUser.IsOwner) {
 				// validate owner
 				if ownerUserID != userID {
-					logger.DebugMessage(
-						"DeviceAPI: ERROR: authDevice query returned owner user ID '%s' but the device context owner has user id '%s'.",
+					logger.ErrorMessage(
+						"DeviceAPI.UpdateDeviceContext(): authDevice query returned owner user ID '%s' but the device context owner has user id '%s'.",
 						deviceUser.User.UserID, ownerUserID,
 					)
 					return fmt.Errorf("invalid device context")
@@ -108,8 +108,8 @@ func (d *DeviceAPI) UpdateDeviceContext(deviceContext config.DeviceContext) erro
 					guestUser.Active = (status == "active")
 					deviceContext.AddGuestUser(guestUser)
 				} else {
-					logger.DebugMessage(
-						"DeviceAPI: WARNING: authDevice query returned guest user ID '%s' that was not present in the device context.",
+					logger.WarnMessage(
+						"DeviceAPI.UpdateDeviceContext(): authDevice query returned guest user ID '%s' that was not present in the device context.",
 						deviceUser.User.UserID,
 					)
 				}
@@ -120,8 +120,8 @@ func (d *DeviceAPI) UpdateDeviceContext(deviceContext config.DeviceContext) erro
 			return fmt.Errorf("unauthorized")
 		}
 		if guestUser, exists = deviceContext.GetGuestUser(deviceContext.GetLoggedInUserName()); !exists {
-			logger.DebugMessage(
-				"DeviceAPI: ERROR: authDevice query returned a guest user \"%s\" that was not found in the device context",
+			logger.ErrorMessage(
+				"DeviceAPI.UpdateDeviceContext(): authDevice query returned a guest user \"%s\" that was not found in the device context",
 				guestUser.UserID,
 			)
 			return fmt.Errorf("invalid device context")
@@ -158,10 +158,10 @@ func (d *DeviceAPI) RegisterDevice(
 		"wireguardPublicKey": graphql.String(wireguardPublicKey),
 	}
 	if err := d.apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
-		logger.DebugMessage("DeviceAPI: addDevice mutation returned an error: %s", err.Error())
+		logger.ErrorMessage("DeviceAPI.RegisterDevice(): addDevice mutation returned an error: %s", err.Error())
 		return "", "", err
 	}
-	logger.TraceMessage("DeviceAPI: addDevice mutation returned response: %# v", mutation)
+	logger.TraceMessage("DeviceAPI.RegisterDevice(): addDevice mutation returned response: %# v", mutation)
 	return string(mutation.AddDevice.IdKey), string(mutation.AddDevice.DeviceUser.Device.DeviceID), nil
 }
 
@@ -174,10 +174,10 @@ func (d *DeviceAPI) UnRegisterDevice(deviceID string) ([]string, error) {
 		"deviceID": graphql.ID(deviceID),
 	}
 	if err := d.apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
-		logger.DebugMessage("DeviceAPI: deleteDevice mutation returned an error: %s", err.Error())
+		logger.ErrorMessage("DeviceAPI.UnRegisterDevice(): deleteDevice mutation returned an error: %s", err.Error())
 		return nil, err
 	}
-	logger.TraceMessage("DeviceAPI: deleteDevice mutation returned response: %# v", mutation)
+	logger.TraceMessage("DeviceAPI.UnRegisterDevice(): deleteDevice mutation returned response: %# v", mutation)
 
 	userIDs := []string{}
 	for _, userID := range mutation.DeleteDevice {
@@ -203,10 +203,10 @@ func (d *DeviceAPI) AddDeviceUser(deviceID, wireguardPublicKey string) (string, 
 		"wireguardPublicKey": graphql.String(wireguardPublicKey),
 	}
 	if err := d.apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
-		logger.DebugMessage("DeviceAPI: addDeviceUser mutation returned an error: %s", err.Error())
+		logger.ErrorMessage("DeviceAPI.AddDeviceUser(): addDeviceUser mutation returned an error: %s", err.Error())
 		return "", "", err
 	}
-	logger.TraceMessage("DeviceAPI: addDeviceUser mutation returned response: %# v", mutation)
+	logger.TraceMessage("DeviceAPI.AddDeviceUser(): addDeviceUser mutation returned response: %# v", mutation)
 	return string(mutation.AddDeviceUser.Device.DeviceID), string(mutation.AddDeviceUser.User.UserID), nil
 }
 
@@ -226,9 +226,9 @@ func (d *DeviceAPI) RemoveDeviceUser(deviceID string) (string, string, error) {
 		"deviceID": graphql.ID(deviceID),
 	}
 	if err := d.apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
-		logger.DebugMessage("DeviceAPI: deleteDeviceUser mutation returned an error: %s", err.Error())
+		logger.ErrorMessage("DeviceAPI.RemoveDeviceUser(): deleteDeviceUser mutation returned an error: %s", err.Error())
 		return "", "", err
 	}
-	logger.TraceMessage("DeviceAPI: deleteDeviceUser mutation returned response: %# v", mutation)
+	logger.TraceMessage("DeviceAPI.RemoveDeviceUser(): deleteDeviceUser mutation returned response: %# v", mutation)
 	return string(mutation.DeleteDeviceUser.Device.DeviceID), string(mutation.DeleteDeviceUser.User.UserID), nil
 }

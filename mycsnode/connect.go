@@ -59,14 +59,14 @@ func (a *ApiClient) Connect() (*VPNConfig, error) {
 	}
 
 	if err = a.restApiClient.NewRequest(request).DoPost(response); err != nil {
-		logger.DebugMessage(
-			"ApiClient.UpdateSpaceUser(): ERROR! HTTP error: %s", 
+		logger.ErrorMessage(
+			"ApiClient.UpdateSpaceUser(): HTTP error: %s", 
 			err.Error())
 
 		// todo: return a custom error type 
 		// with parsed error object
 		if response.Error != nil && len(errorResponse.ErrorMessage) > 0 {
-			logger.DebugMessage(
+			logger.ErrorMessage(
 				"ApiClient.UpdateSpaceUser(): Error message body: Error Code: %d; Error Message: %s", 
 				errorResponse.ErrorCode, errorResponse.ErrorMessage)
 
@@ -99,14 +99,14 @@ func (a *ApiClient) Disconnect() error {
 	}
 
 	if err = a.restApiClient.NewRequest(request).DoDelete(response); err != nil {
-		logger.DebugMessage(
-			"ApiClient.UpdateSpaceUser(): ERROR! HTTP error: %s", 
+		logger.ErrorMessage(
+			"ApiClient.UpdateSpaceUser(): HTTP error: %s", 
 			err.Error())
 
 		// todo: return a custom error type 
 		// with parsed error object
 		if response.Error != nil && len(errorResponse.ErrorMessage) > 0 {
-			logger.DebugMessage(
+			logger.ErrorMessage(
 				"ApiClient.UpdateSpaceUser(): Error message body: Error Code: %d; Error Message: %s", 
 				errorResponse.ErrorCode, errorResponse.ErrorMessage)
 
