@@ -63,6 +63,7 @@ func (tsc *TailscaleClient) Connect() error {
 		map[string]interface{}{
 			"reset": true,
 			"acceptRoutes": true,
+			"acceptDNS": true,
 		},
 	)
 }
