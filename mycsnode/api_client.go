@@ -73,6 +73,7 @@ type ErrorResponse struct {
 	ErrorMessage string `json:"errorMessage"`
 }
 
+const authTimeout    = time.Duration(5000)
 var authRetryTimeout = time.Duration(500)
 
 func init() {
@@ -93,6 +94,8 @@ func NewApiClient(config config.Config, node userspace.SpaceNode) (*ApiClient, e
 	apiClient := &ApiClient{ 
 		deviceContext: config.DeviceContext(),
 		node:          node,
+
+		authTimeout: authTimeout,
 	}
 	if apiClient.nodePublicKey, err = crypto.NewPublicKeyFromPEM(node.GetPublicKey()); err != nil {
 		return nil, err

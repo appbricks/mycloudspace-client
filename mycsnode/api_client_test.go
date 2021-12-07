@@ -287,6 +287,35 @@ var _ = Describe("MyCS Node API Client", func() {
 
 			mockNodeService.TestServer.Done()
 		})
+
+		It("Call the api create a mesh auth key", func() {
+
+			mockNodeService.TestServer.PushRequest().
+				ExpectPath("/meshAuthKey").
+				ExpectMethod("POST").
+				WithCallbackTest(utils_mocks.HandleAuthHeaders(apiClient, createMesgAuthKeyRequest, createMesgAuthKeyResponse))
+
+			connectInfo, err := apiClient.CreateMeshAuthKey(60000)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(connectInfo.AuthKey).To(Equal("b337ed79eb8044152abb7340d4d29d39c2aa5ea7f5f93ebe"))
+
+			Expect(connectInfo.SpaceNode.Name).To(Equal("Test-Space"))
+			Expect(connectInfo.SpaceNode.IP).To(Equal("10.0.0.1"))
+			Expect(connectInfo.SpaceNode.Routes).To(Equal([]string{"0.0.0.0/0", "::/0", "172.16.127.253/32"}))
+
+			for _, d := range connectInfo.DeviceNodes {
+				switch d.Name {
+				case "Device1":
+					Expect(d.IP).To(Equal("10.0.0.2"))
+					Expect(d.Routes).To(Equal([]string{"192.168.100.0/24", "192.168.10.10/32"}))
+				case "Device2":
+					Expect(d.IP).To(Equal("10.0.0.3"))
+					Expect(d.Routes).To(Equal([]string{"192.168.100.5/32"}))
+				default:
+					Fail(fmt.Sprintf("unexpected device \"%s\"", d.Name))
+				}
+			}		
+		})
 	})
 })
 
@@ -362,3 +391,40 @@ const connectUserVPNResponse = `{
     "keep_alive_ping": 25
   }
 }`
+
+const createMesgAuthKeyRequest = `{
+	"expiresIn": 60000
+}`
+const createMesgAuthKeyResponse = `{
+  "authKey": "b337ed79eb8044152abb7340d4d29d39c2aa5ea7f5f93ebe",
+  "dns": [
+    "10.12.16.253"
+  ],
+  "space_node": {
+    "name": "Test-Space",
+    "ip": "10.0.0.1",
+    "routes": [
+      "0.0.0.0/0",
+      "::/0",
+      "172.16.127.253/32"
+    ]
+  },
+  "device_nodes": [
+    {
+      "name": "Device1",
+      "ip": "10.0.0.2",
+      "routes": [
+        "192.168.100.0/24",
+        "192.168.10.10/32"
+      ]
+    },
+    {
+      "name": "Device2",
+      "ip": "10.0.0.3",
+      "routes": [
+        "192.168.100.5/32"
+      ]
+    }
+  ]
+}
+`

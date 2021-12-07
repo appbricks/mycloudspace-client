@@ -1,23 +1,22 @@
 package tailscale
 
 import (
-	"bufio"
-	"bytes"
 	"crypto/x509"
 	"fmt"
-	"io"
 	"net/http"
 	"os"
-	"strconv"
 
+	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
+	"inet.af/netaddr"
 	"tailscale.com/control/controlclient"
+	"tailscale.com/net/interfaces"
 	"tailscale.com/paths"
+	"tailscale.com/wgengine/router"
 
-	"github.com/appbricks/cloud-builder/config"
-	"github.com/appbricks/cloud-builder/userspace"
 	"github.com/appbricks/mycloudspace-client/mycscloud"
 	"github.com/appbricks/mycloudspace-client/mycsnode"
 	"github.com/mevansam/goutils/logger"
+	"github.com/mevansam/goutils/network"
 
 	tailscale_common "github.com/appbricks/mycloudspace-common/tailscale"
 )
@@ -25,22 +24,21 @@ import (
 type TailscaleDaemon struct {
 	*tailscale_common.TailscaleDaemon
 
-	// MyCS client logged in device context
-	config config.Config
 	// MyCS space nodes providing control services
 	spaceNodes *mycscloud.SpaceNodes
-}
 
-type ccTransportHook struct {
-	// Tailscale control client http transport
-	ccTransport *http.Transport
-	// spaceNode connecting to
-	spaceNode userspace.SpaceNode
-	// node api client
+	// control node api client
 	apiClient *mycsnode.ApiClient
 }
 
-func NewTailscaleDaemon(config config.Config, spaceNodes *mycscloud.SpaceNodes, statePath string) *TailscaleDaemon {
+type ccTransportHook struct {
+	tsd *TailscaleDaemon
+	
+	// Tailscale control client http transport
+	ccTransport *http.Transport
+}
+
+func NewTailscaleDaemon(spaceNodes *mycscloud.SpaceNodes, statePath string) *TailscaleDaemon {
 
 	var (
 		socketPath string
@@ -52,7 +50,6 @@ func NewTailscaleDaemon(config config.Config, spaceNodes *mycscloud.SpaceNodes, 
 	}
 
 	tsd := &TailscaleDaemon{		
-		config: config,
 		spaceNodes: spaceNodes,
 	}
 	tsd.TailscaleDaemon = tailscale_common.NewTailscaleDaemon(statePath, tsd)
@@ -64,49 +61,78 @@ func NewTailscaleDaemon(config config.Config, spaceNodes *mycscloud.SpaceNodes, 
 	return tsd
 }
 
+func (tsd *TailscaleDaemon) Start() error {
+	
+	var (
+		err error
+
+		ifaceList    interfaces.List
+		ipsetBuilder netaddr.IPSetBuilder
+		ipset        *netaddr.IPSet
+	)
+
+	// Retrieve prefix of network externally routable gateway is on.
+	// This needs to be explicitly excluded in the tailscale route
+	// logic when configuring an exit node route due to issues
+	// in the implementation of the router for freebsd/darwin.
+	if ifaceList, err = interfaces.GetList(); err != nil {
+		return err
+	}
+	defaultIface := network.NewNetworkContext().DefaultInterface()
+	if err = ifaceList.ForeachInterfaceAddress(func(iface interfaces.Interface, pfx netaddr.IPPrefix) {
+		if iface.Name == defaultIface {
+			ipsetBuilder.AddPrefix(pfx)
+		}
+	}); err != nil {
+		return err
+	}
+	if ipset, err = ipsetBuilder.IPSet(); err != nil {
+		return err
+	}
+	routesToExclude := map[string]bool{
+		"0.0.0.0/0": true,
+		"::/0": true,
+	}
+	for _, pfx := range ipset.Prefixes() {
+		routesToExclude[pfx.String()] = true
+	}
+	// routes to exclude from tailscale configuration as these will 
+	// be configured outside of the tailscale daemon to work around 
+	// tailscale exit node configuration issues in darwin
+	router.ExcludeRoute = func(pfx netaddr.IPPrefix) bool {
+		return routesToExclude[pfx.String()]
+	}
+	
+	return tsd.TailscaleDaemon.Start()
+}
+
+func (tsd *TailscaleDaemon) Stop() {
+	if tsd.apiClient != nil {
+		tsd.spaceNodes.ReleaseApiClientForSpace(tsd.apiClient)
+	}
+	tsd.TailscaleDaemon.Stop()
+}
+
 func (tsd *TailscaleDaemon) BytesTransmitted() (int64, int64, error) {
 
 	var (
 		err error
-
-		val, sent, recd int64
+		
+		device     *wgtypes.Device
+		sent, recd int64
 	)
 	
-	reader, writer := io.Pipe()
-	go func() {
-		defer writer.Close()
-		err = tsd.TailscaleDaemon.WireguardDevice().IpcGetOperation(writer)
-	}()	
-
-	s := bufio.NewScanner(reader)
-	for s.Scan() {
-
-		if err != nil {
-			// check for error 
-			// during write to pipe
-			return 0, 0, err
-		}
-
-		b := s.Bytes()
-		if len(b) == 0 {
-			// Empty line, done parsing.
-			break
-		}
-		// All data is in key=value format.
-		kvs := bytes.Split(b, []byte("="))		
-
-		switch string(kvs[0]) {
-		case "tx_bytes":
-			if val, err = strconv.ParseInt(string(kvs[1]), 10, 64); err == nil {
-				sent = sent + val
-			}
-		case "rx_bytes":
-			if val, err = strconv.ParseInt(string(kvs[1]), 10, 64); err == nil {
-				recd = recd + val
-			}
-		}
+	if device, err = tsd.WireguardDevice(); err != nil {
+		return -1, -1, err
 	}
-	return sent, recd, nil
+
+	recd = 0
+	sent = 0
+	for _, peer := range device.Peers {
+		recd += peer.ReceiveBytes
+		sent += peer.TransmitBytes
+	}
+	return recd, sent, nil
 }
 
 // io.Writer intercepts tailscale log output 
@@ -131,21 +157,21 @@ func (tsd *TailscaleDaemon) ConfigureHTTPClient(url string, httpClient *http.Cli
 		certPool *x509.CertPool
 	)
 
-	if spaceNode := tsd.spaceNodes.LookupSpaceNodeByEndpoint(url); spaceNode != nil {
+	if space := tsd.spaceNodes.LookupSpaceByEndpoint(url); space != nil {
 
 		logger.TraceMessage(
 			"TailscaleDaemon.ConfigureHTTPClient(): Authorizing access to space: %s", 
-			spaceNode.Key())
+			space.Key())
 
 		ccTransportHook := &ccTransportHook{
+			tsd:         tsd,
 			ccTransport: httpClient.Transport.(*http.Transport),
-			spaceNode:   spaceNode,
 		}
 		
 		// add locally signed ca root of space node
 		// to the control client http transport's 
 		// certificate pool
-		localCARoot := spaceNode.GetApiCARoot()
+		localCARoot := space.GetApiCARoot()
 		if len(localCARoot) > 0 {
 			if certPool, err = x509.SystemCertPool(); err != nil {
 				return err
@@ -158,10 +184,7 @@ func (tsd *TailscaleDaemon) ConfigureHTTPClient(url string, httpClient *http.Cli
 		httpClient.Transport = ccTransportHook
 
 		// create node api client and start background auth
-		if ccTransportHook.apiClient, err = mycsnode.NewApiClient(tsd.config, spaceNode); err != nil {
-			return err
-		}
-		if err = ccTransportHook.apiClient.Start(); err != nil {
+		if tsd.apiClient, err = tsd.spaceNodes.GetApiClientForSpace(space); err != nil {
 			return err
 		}
 		return nil
@@ -178,7 +201,7 @@ func (h *ccTransportHook) RoundTrip(req *http.Request) (*http.Response, error) {
 		err error
 	)
 
-	if err = h.apiClient.SetAuthorized(req); err != nil {
+	if err = h.tsd.apiClient.SetAuthorized(req); err != nil {
 		return nil, err
 	}
 	return h.ccTransport.RoundTrip(req)

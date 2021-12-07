@@ -127,6 +127,7 @@ var _ = Describe("Space API", func() {
 		Expect(spaces[0].LastSeen).To(Equal(uint64(1630519684375)))
 		Expect(spaces[0].IsOwned).To(BeTrue())
 		Expect(spaces[0].IsAdmin).To(BeTrue())
+		Expect(spaces[0].IsEgressNode).To(BeTrue())
 		Expect(spaces[0].AccessStatus).To(Equal("active"))
 		Expect(spaces[0].IPAddress).To(Equal("1.1.1.1"))
 		Expect(spaces[0].FQDN).To(Equal("test1-wg-us-east-1.local"))
@@ -153,21 +154,21 @@ var _ = Describe("Space API", func() {
 		Expect(sharedSpaces[1].Key()).To(Equal("basic/aws/aa/appbrickscookbook"))
 		Expect(sharedSpaces[1].GetSpaceID()).To(Equal("ad601f92-e073-4dfb-8e48-d97acde8e3fc"))
 
-		spaceNode := spaceNodes.LookupSpaceNode("basic/aws/aa/cookbook", func(nodes []userspace.SpaceNode) userspace.SpaceNode {
+		spaceNode := spaceNodes.LookupSpace("basic/aws/aa/cookbook", func(nodes []userspace.SpaceNode) userspace.SpaceNode {
 			Expect(len(nodes)).To(Equal(1))
 			return nodes[0]
 		})
 		Expect(spaceNode.GetSpaceID()).To(Equal("1d812616-5955-4bc6-8b67-ec3f0f12a756"))
-		spaceNode = spaceNodes.LookupSpaceNode("basic/aws/bb/cookbook", func(nodes []userspace.SpaceNode) userspace.SpaceNode {
+		spaceNode = spaceNodes.LookupSpace("basic/aws/bb/cookbook", func(nodes []userspace.SpaceNode) userspace.SpaceNode {
 			Expect(len(nodes)).To(Equal(2))
 			Expect(nodes[0].GetSpaceID()).To(Equal("1d2a49d7-330b-4beb-a102-33049869e472"))
 			Expect(nodes[1].GetSpaceID()).To(Equal("aa4ea679-ee74-4de6-852c-ccf7636bf644"))
 			return nodes[1]
 		})
 		Expect(spaceNode.GetSpaceID()).To(Equal("aa4ea679-ee74-4de6-852c-ccf7636bf644"))
-		spaceNode = spaceNodes.LookupSpaceNode("basic/aws/cc/cookbook", nil)
+		spaceNode = spaceNodes.LookupSpace("basic/aws/cc/cookbook", nil)
 		Expect(spaceNode.GetSpaceID()).To(Equal(""))
-		spaceNode = spaceNodes.LookupSpaceNodeByEndpoint("https://test2-wg-us-east-1.local")
+		spaceNode = spaceNodes.LookupSpaceByEndpoint("https://test2-wg-us-east-1.local")
 		Expect(spaceNode).NotTo(BeNil())
 		Expect(spaceNode.GetSpaceID()).To(Equal("aa4ea679-ee74-4de6-852c-ccf7636bf644"))
 	})
@@ -213,7 +214,7 @@ const deleteSpaceResponse = `{
 }`
 
 const getSpacesRequest = `{
-	"query": "{getUser{spaces{spaceUsers{space{spaceID,spaceName,publicKey,recipe,iaas,region,version,ipAddress,fqdn,port,localCARoot,status,lastSeen},isOwner,isAdmin,status}}}}"
+	"query": "{getUser{spaces{spaceUsers{space{spaceID,spaceName,publicKey,recipe,iaas,region,version,isEgressNode,ipAddress,fqdn,port,localCARoot,status,lastSeen},isOwner,isAdmin,isEgressNode,status}}}}"
 }`
 const getSpacesResponse = `{
 	"data": {
@@ -229,6 +230,7 @@ const getSpacesResponse = `{
 							"iaas": "aws",
 							"region": "us-east-1",
 							"version": "dev",
+							"isEgressNode": true,
 							"ipAddress": "1.1.1.1",
 							"fqdn": "test1-wg-us-east-1.local",
 							"port": 443,
@@ -238,6 +240,7 @@ const getSpacesResponse = `{
 						},
 						"isOwner": true,
 						"isAdmin": true,
+						"isEgressNode": true,
 						"status": "active"
 					}
 				]
@@ -247,7 +250,7 @@ const getSpacesResponse = `{
 }`
 
 const getSpaceNodesRequest = `{
-	"query": "{getUser{spaces{spaceUsers{space{spaceID,spaceName,publicKey,recipe,iaas,region,version,ipAddress,fqdn,port,localCARoot,status,lastSeen},isOwner,isAdmin,status}}}}"
+	"query": "{getUser{spaces{spaceUsers{space{spaceID,spaceName,publicKey,recipe,iaas,region,version,isEgressNode,ipAddress,fqdn,port,localCARoot,status,lastSeen},isOwner,isAdmin,isEgressNode,status}}}}"
 }`
 const getSpaceNodesResponse = `{
 	"data": {
@@ -263,6 +266,7 @@ const getSpaceNodesResponse = `{
 							"iaas": "aws",
 							"region": "aa",
 							"version": "dev",
+							"isEgressNode": true,
 							"ipAddress": "1.1.1.1",
 							"fqdn": "test1-wg-us-east-1.local",
 							"port": 443,
@@ -272,6 +276,7 @@ const getSpaceNodesResponse = `{
 						},
 						"isOwner": true,
 						"isAdmin": true,
+						"isEgressNode": true,
 						"status": "active"
 					},
 					{
