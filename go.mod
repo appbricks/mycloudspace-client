@@ -19,6 +19,7 @@ replace tailscale.com => ../tailscale
 require (
 	github.com/appbricks/cloud-builder v0.0.0-00010101000000-000000000000
 	github.com/appbricks/mycloudspace-common v0.0.0-00010101000000-000000000000
+	github.com/cloudevents/sdk-go/v2 v2.7.0
 	github.com/go-ping/ping v0.0.0-20211130115550-779d1e919534
 	github.com/hasura/go-graphql-client v0.2.0
 	github.com/lestrrat-go/jwx v1.2.1
@@ -27,6 +28,7 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.16.0
+	github.com/sirupsen/logrus v1.7.0
 	golang.org/x/net v0.0.0-20211205041911-012df41ee64c // indirect
 	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c
 	golang.org/x/sys v0.0.0-20211205182925-97ca703d548d // indirect

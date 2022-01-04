@@ -1,10 +1,12 @@
 package tailscale
 
 import (
+	"context"
 	"crypto/x509"
 	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"inet.af/netaddr"
@@ -17,7 +19,9 @@ import (
 	"github.com/appbricks/mycloudspace-client/mycsnode"
 	"github.com/mevansam/goutils/logger"
 	"github.com/mevansam/goutils/network"
+	"github.com/mevansam/goutils/utils"
 
+	"github.com/appbricks/mycloudspace-common/monitors"
 	tailscale_common "github.com/appbricks/mycloudspace-common/tailscale"
 )
 
@@ -29,6 +33,12 @@ type TailscaleDaemon struct {
 
 	// control node api client
 	apiClient *mycsnode.ApiClient
+
+	// bytes sent and received through the tunnel
+	sent, recd *monitors.Counter
+
+	metricsTimer *utils.ExecTimer
+	metricsError error
 }
 
 type ccTransportHook struct {
@@ -38,7 +48,11 @@ type ccTransportHook struct {
 	ccTransport *http.Transport
 }
 
-func NewTailscaleDaemon(spaceNodes *mycscloud.SpaceNodes, statePath string) *TailscaleDaemon {
+func NewTailscaleDaemon(
+	statePath string,
+	spaceNodes *mycscloud.SpaceNodes, 
+	monitorService *monitors.MonitorService,
+) *TailscaleDaemon {
 
 	var (
 		socketPath string
@@ -53,7 +67,14 @@ func NewTailscaleDaemon(spaceNodes *mycscloud.SpaceNodes, statePath string) *Tai
 		spaceNodes: spaceNodes,
 	}
 	tsd.TailscaleDaemon = tailscale_common.NewTailscaleDaemon(statePath, tsd)
+	tsd.sent = monitors.NewCounter("sent", true)
+	tsd.recd = monitors.NewCounter("recd", true)
 
+	// create monitors
+	monitor := monitorService.NewMonitor("space-network-mesh")
+	monitor.AddCounter(tsd.sent)
+	monitor.AddCounter(tsd.recd)
+	
 	// Set MyCS Hook to TailScale's 
 	// control server client
 	controlclient.MyCSNodeControlService = tsd
@@ -70,6 +91,15 @@ func (tsd *TailscaleDaemon) Start() error {
 		ipsetBuilder netaddr.IPSetBuilder
 		ipset        *netaddr.IPSet
 	)
+
+	// start background thread to record tunnel metrics
+	tsd.metricsTimer = utils.NewExecTimer(context.Background(), tsd.recordNetworkMetrics, false)
+	if err = tsd.metricsTimer.Start(500); err != nil {
+		logger.ErrorMessage(
+			"TailscaleDaemon.Start(): Unable to start metrics collection job: %s", 
+			err.Error(),
+		)
+	}
 
 	// Retrieve prefix of network externally routable gateway is on.
 	// This needs to be explicitly excluded in the tailscale route
@@ -107,13 +137,16 @@ func (tsd *TailscaleDaemon) Start() error {
 }
 
 func (tsd *TailscaleDaemon) Stop() {
+	if tsd.metricsTimer != nil {
+		tsd.metricsTimer.Stop()
+	}
 	if tsd.apiClient != nil {
 		tsd.spaceNodes.ReleaseApiClientForSpace(tsd.apiClient)
 	}
 	tsd.TailscaleDaemon.Stop()
 }
 
-func (tsd *TailscaleDaemon) BytesTransmitted() (int64, int64, error) {
+func (tsd *TailscaleDaemon) recordNetworkMetrics() (time.Duration, error) {
 
 	var (
 		err error
@@ -123,16 +156,31 @@ func (tsd *TailscaleDaemon) BytesTransmitted() (int64, int64, error) {
 	)
 	
 	if device, err = tsd.WireguardDevice(); err != nil {
-		return -1, -1, err
+		logger.ErrorMessage(
+			"TailscaleDaemon.recordNetworkMetrics(): Failed to retrieve wireguard device information: %s", 
+			err.Error(),
+		)
+		tsd.metricsError = err
+
+	} else {
+		tsd.metricsError = nil
+
+		recd = 0
+		sent = 0
+		for _, peer := range device.Peers {
+			recd += peer.ReceiveBytes
+			sent += peer.TransmitBytes
+		}
+		tsd.recd.Set(recd)
+		tsd.sent.Set(sent)	
 	}
 
-	recd = 0
-	sent = 0
-	for _, peer := range device.Peers {
-		recd += peer.ReceiveBytes
-		sent += peer.TransmitBytes
-	}
-	return recd, sent, nil
+	// record metrics every 500ms
+	return 500, nil
+}
+
+func (tsd *TailscaleDaemon) BytesTransmitted() (int64, int64, error) {
+	return tsd.recd.Get(), tsd.sent.Get(), tsd.metricsError
 }
 
 // io.Writer intercepts tailscale log output 
