@@ -55,7 +55,7 @@ func (p *EventPublisher) PostMeasurementEvents(events []*cloudevents.Event) ([]m
 		logger.TraceMessage("EventPublisher.PostMeasurementEvents(): Client is not logged in. Measurement events will be not be recorded.")
 		return nil, nil
 	}
-	apiClient := api.NewGraphQLClient(p.apiUrl, p.subUrl, p.config)
+	apiClient := api.NewGraphQLClientNoPool(p.apiUrl, p.subUrl, p.config)
 
 	if deviceID, ok = p.config.DeviceContext().GetDeviceID(); !ok {
 		return nil, fmt.Errorf("unable to determine current client's device context")
