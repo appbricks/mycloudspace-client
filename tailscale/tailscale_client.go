@@ -147,6 +147,13 @@ func (tsc *TailscaleClient) Connect(
 		}
 	}
 	if exitNode != nil {		
+		// configure static egress routes for the tunnel
+		if routeManager, err = tsc.nc.NewRouteManager(); err != nil {
+			return err
+		}	
+		if err = routeManager.AddExternalRouteToIPs(exitNode.Endpoints); err != nil {
+			return err
+		}
 		// wait until exit node is reachable 
 		// before adding the default route to it. 
 		// exit if exit node is not reachable within 
@@ -156,29 +163,23 @@ func (tsc *TailscaleClient) Connect(
 		}
 		tsc.exitNodePinger.Timeout = time.Second * 30
 		tsc.exitNodePinger.OnRecv = func(pkt *ping.Packet) {
-			// pause 1s to allow tailscale subsystem to 
-			// update. this is not ideal as the underlying
-			// tailscale subsytem is non-deterministic.
+			logger.TraceMessage(
+				"TailscaleClient.Connect(): Received ping echo from exit node %s in space network mesh.",
+				exitNode.IP,
+			)
+			tsc.waitForExitNode = false
 			tsc.exitNodePinger.Stop()
-		}
-		// configure egress route
-		if routeManager, err = tsc.nc.NewRouteManager(); err != nil {
-			return err
-		}	
-		if err = routeManager.AddExternalRouteToIPs(exitNode.Endpoints); err != nil {
-			return err
 		}
 		if err = tsc.exitNodePinger.Run(); err != nil {
 			logger.ErrorMessage("TailscaleClient.Connect(): Unable to ping exit node: %s", err.Error())
 			return err
 		}
-		tsc.waitForExitNode = false
-		tsc.connState = Connected
 		// add default route to exit node once exit node 
 		// is reachable via the tailscale mesh
 		if err = routeManager.AddDefaultRoute(exitNode.IP); err != nil {
 			return err
 		}
+		tsc.connState = Connected
 	}
 	return nil
 }
