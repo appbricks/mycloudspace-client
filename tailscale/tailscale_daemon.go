@@ -68,7 +68,9 @@ func NewTailscaleDaemon(
 	}
 	tsd.TailscaleDaemon = tailscale_common.NewTailscaleDaemon(statePath, tsd)
 	tsd.sent = monitors.NewCounter("sent", true)
+	tsd.sent.IgnoreZeroSnapshots()
 	tsd.recd = monitors.NewCounter("recd", true)
+	tsd.recd.IgnoreZeroSnapshots()
 
 	// create monitors
 	monitor := monitorService.NewMonitor("space-network-mesh")
