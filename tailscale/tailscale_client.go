@@ -147,13 +147,6 @@ func (tsc *TailscaleClient) Connect(
 		}
 	}
 	if exitNode != nil {		
-		// configure static egress routes for the tunnel
-		if routeManager, err = tsc.nc.NewRouteManager(); err != nil {
-			return err
-		}	
-		if err = routeManager.AddExternalRouteToIPs(exitNode.Endpoints); err != nil {
-			return err
-		}
 		// wait until exit node is reachable 
 		// before adding the default route to it. 
 		// exit if exit node is not reachable within 
@@ -174,8 +167,17 @@ func (tsc *TailscaleClient) Connect(
 			logger.ErrorMessage("TailscaleClient.Connect(): Unable to ping exit node: %s", err.Error())
 			return err
 		}
-		// add default route to exit node once exit node 
-		// is reachable via the tailscale mesh
+		// configure static egress routes for the tunnel
+		if routeManager, err = tsc.nc.NewRouteManager(); err != nil {
+			return err
+		}	
+		// add static routes via the LAN gateway required 
+		// to establish the tailscale/wireguard tunnel 
+		if err = routeManager.AddExternalRouteToIPs(exitNode.Endpoints); err != nil {
+			return err
+		}
+		// create default route via exit node for all 
+		// other internet traffic
 		if err = routeManager.AddDefaultRoute(exitNode.IP); err != nil {
 			return err
 		}
