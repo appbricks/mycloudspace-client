@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"strings"
 
 	cloudevents "github.com/cloudevents/sdk-go/v2"
 	"github.com/hasura/go-graphql-client"
@@ -44,7 +45,9 @@ func (p *EventPublisher) PostMeasurementEvents(events []*cloudevents.Event) ([]m
 		err error
 		ok  bool
 
-		deviceID string
+		deviceID,
+		eventSource string
+		sourceUrn strings.Builder
 
 		zlibWriter *zlib.Writer
 
@@ -60,6 +63,11 @@ func (p *EventPublisher) PostMeasurementEvents(events []*cloudevents.Event) ([]m
 	if deviceID, ok = p.config.DeviceContext().GetDeviceID(); !ok {
 		return nil, fmt.Errorf("unable to determine current client's device context")
 	}
+	sourceUrn.WriteString("urn:mycs:device:")
+	sourceUrn.WriteString(deviceID)
+	sourceUrn.WriteByte(':')
+	sourceUrn.WriteString(p.config.DeviceContext().GetLoggedInUserID())
+	eventSource = sourceUrn.String()
 
 	var mutation struct {
 		PushData []struct {
@@ -70,7 +78,7 @@ func (p *EventPublisher) PostMeasurementEvents(events []*cloudevents.Event) ([]m
 
 	dataPayloads := make([]PushDataInput, 0, len(events))
 	for _, event := range events {
-		event.SetSource("urn:mycs:device:" + deviceID)
+		event.SetSource(eventSource)
 
 		if logrus.IsLevelEnabled(logrus.TraceLevel) {
 			logger.DebugMessage("EventsAPI.PostMeasurementEvents(): Preparing device event for posting: %s", event.String())
