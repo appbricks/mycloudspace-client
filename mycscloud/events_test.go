@@ -17,7 +17,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("Event API", func() {
+var _ = FDescribe("Event API", func() {
 
 	var (
 		err error
@@ -74,8 +74,8 @@ var _ = Describe("Event API", func() {
 		}
 
 		testServer.PushRequest().
-			ExpectJSONRequest(pushDataRequest).
-			RespondWith(pushDataResponse)
+			ExpectJSONRequest(publishDataRequest).
+			RespondWith(publishDataResponse)
 
 		postErrors, err := eventPublisher.PostMeasurementEvents(events)
 		Expect(err).NotTo(HaveOccurred())
@@ -93,10 +93,10 @@ var testEvents = []string{
 	`{"specversion":"1.0","id":"9315ba87-959a-447c-8946-dde357fbc0b2","source":"urn:mycs:device:","type":"io.appbricks.mycs.network.metric","subject":"Application Monitor Snapshot","datacontenttype":"application/json","time":"2021-12-27T23:41:30.859538Z","data":{"monitors":[{"name":"testMonitor","counters":[{"name":"testCounter","timestamp":1640648490859,"value":47}]}]}}`,
 }
 
-const pushDataRequest = `{"query":"mutation ($data:[PushDataInput!]!){pushData(data: $data){success,error}}","variables":{"data":[{"type":"event","compressed":true,"payload":"eJxkzr+O3CAQBvBXOU1tHP4MGNNFqVMlVaIrBowU7s6ADN5otfK7R85aSpF2Zr7vNw9oNYZb3FoqGRyIkcMAaQEHiGKZCCXjxkuGJBWzSIpZ7bldggrSEgzQyr6FCA72Lbv1Hppb4i2F6MxkJhQ0M264ZWiUYl7OinEdcfaRjObouLSzsHJm2ivNEMPMPDeBWakRRfQTaQED9Hs9iVRGqtVvKby38bTGHPvvsr2Pa+xbCuc7u3+LoYODz7V+pEA9lfzyteTUy/byLVNtv0qHARbqFEruMfernf4FPr21kk83redGcimYkExO36VyKJzio9WzsPrH1QTuAesTaeB+PiDT32SPrV84DBDKnnv8/+LLc36BrdNawQmD3KBFa6y2A9zoY4/glDxej9fj+BMAAP//PpOHuw=="},{"type":"event","compressed":true,"payload":"eJxkzr2u1DAQBeBXuZo6Dv6P7Q5RU0EFuoXtDMK7G9uKnUWrVd4dhY1EcduZOeebJ7SK8Y5rSyWDAzZSGCDN4CBMkw+aGmIEzkRSicTOjBM7019B4+yFZzBAK9saERxsa3bLIzY34z1FdHrSk2TeEnqUSC0ECdwKQhVKG9BrRaWj3FhmuCUqCEWkjJYEqiMxXEnJMExeHUh/1INIZfS1hjXFaxsPa8zY/5T1Oi7Y1xSPd7ZwwdjBwedabyn6nkp++1py6mV9+5Z9bb9LhwFm330suWPuZ7v/H/h0aSUfblqODaecEcYJn75z4SRzgo5GWcV/nEXgnrC8jAbu5xOy/xfs2PppwwCxbLnjx4svr/npte6XCo5pSbU00kxGmQHu/rYhOMn39/193/8GAAD//wTniFQ="},{"type":"event","compressed":true,"payload":"eJxkzsFu3CAQBuBXieZsXMADxtyqnntqT61ygPFEJYkBGbxVtNp3rzax1EOuM/P/31yhVaYL7y2VDB7UKGGAtIIHNCvSZJ4ExZkFErMIxFIo0uv6xMowEgzQyrETg4djz357o+ZXviRib2c7owqLkFY6gXaaRNTLJKRhXCIHayR6qd2inF6EiZMRiLSIKC0Jpw2i4jgHo2CA/lbvRCpjqDXuiV7aeLfGzP1v2V/Gjfue3t854jNTBw9fa31NFHoq+eF7yamX/eFHDrX9KR0GWEMPVHLn3M/28D/w5bmVfHfTdt9oqZVQWuj5p548Kj/J0ZnF6PnX2QT+CtsH0sD/vkIO78nOrZ84DEDlyJ0/X3z7mJ9g62Gr4JVFadGhc864AS7h9WDwRt8eb4+3278AAAD//+0kiXk="},{"type":"event","compressed":true,"payload":"eJxkzr+O3CAQBvBXOU1tHP4MGOii1KmSKtEVwM4q3J0BGbzRabXvHjlnKUXamfm+39yhN0o32nquBTyImcME+QIe0GmOXHDmwjUwTOrKIo+WRbrKlBZxQZIwQa/7lgg87Fvx63vq/kK3nMibxSwogmPccMvQKMWidIpxTegiBaM5ei6tE1Y6pqPSDDE5FrlJzEqNKCguQQuYYLy3g8h1Dq3FLafXPh/WXGj8rtvrvNLYcjre2eMLpQEePrf2llMYuZanr7XkUbenbyW0/qsOmOASRki1DCrjbA//Ap9eei2Hm9djI7kUTEgml+9SeRRe8dlqp5X6cTaBv8P6gXTwP+9Qwt/koD5OHCZIdS+D/r/48jE/wT7C2sALg9ygReusthPcwttO4JV9PD+eH48/AQAA//9lbYiD"},{"type":"event","compressed":true,"payload":"eJxkzr+O3CAQBvBXOU1tHP4MGOii1KmSKtEVgCcKd2dABm90Wu27R86ulOLamfm+31yhN0oX2nuuBTyImcMEeQUPTgkdg12Y0y4wxCUx69CwdSWll18x8Shhgl6PPRF4OPbit/fU/UqXnMibxSwogmPccMvQKMWidIpxTegiBaM5ei6tE1Y6pqPSDDE5FrlJzEqNKCguQQuYYLy3k8h1Dq3FPafXPp/WXGj8qfvrvNHYczrfOeILpQEePrf2llMYuZanr7XkUfenbyW0/rsOmGANI6RaBpXxaA//A59eei2nm7dzI7kUTEgml+9SeRRe8dlqp5X98WgCf4XtjnTwP69Qwr/koD4eOEyQ6lEGfbz4cp8/wD7C1sALg9ygRcetdhNcwttB4HG5Pd+eb7e/AQAA///Ct4gV"}]}}`
-const pushDataResponse = `{
+const publishDataRequest = `{"query":"mutation ($data:[PublishDataInput!]!){publishData(data: $data){success,error}}","variables":{"data":[{"type":"event","compressed":true,"payload":"eJxkzr+O3CAQBvBXOU1tHP4MGNNFqVMlVaIrBowU7s6ADN5otfK7R85aSpF2Zr7vNw9oNYZb3FoqGRyIkcMAaQEHiGKZCCXjxkuGJBWzSIpZ7bldggrSEgzQyr6FCA72Lbv1Hppb4i2F6MxkJhQ0M264ZWiUYl7OinEdcfaRjObouLSzsHJm2ivNEMPMPDeBWakRRfQTaQED9Hs9iVRGqtVvKby38bTGHPvvsr2Pa+xbCuc7u3+LoYODz7V+pEA9lfzyteTUy/byLVNtv0qHARbqFEruMfernf4FPr21kk83redGcimYkExO36VyKJzio9WzsPrH1QTuAesTaeB+PiDT32SPrV84DBDKnnv8/+LLc36BrdNawQmD3KBFa6y2A9zoY4/glDxej9fj+BMAAP//PpOHuw=="},{"type":"event","compressed":true,"payload":"eJxkzr2u1DAQBeBXuZo6Dv6P7Q5RU0EFuoXtDMK7G9uKnUWrVd4dhY1EcduZOeebJ7SK8Y5rSyWDAzZSGCDN4CBMkw+aGmIEzkRSicTOjBM7019B4+yFZzBAK9saERxsa3bLIzY34z1FdHrSk2TeEnqUSC0ECdwKQhVKG9BrRaWj3FhmuCUqCEWkjJYEqiMxXEnJMExeHUh/1INIZfS1hjXFaxsPa8zY/5T1Oi7Y1xSPd7ZwwdjBwedabyn6nkp++1py6mV9+5Z9bb9LhwFm330suWPuZ7v/H/h0aSUfblqODaecEcYJn75z4SRzgo5GWcV/nEXgnrC8jAbu5xOy/xfs2PppwwCxbLnjx4svr/npte6XCo5pSbU00kxGmQHu/rYhOMn39/193/8GAAD//wTniFQ="},{"type":"event","compressed":true,"payload":"eJxkzsFu3CAQBuBXieZsXMADxtyqnntqT61ygPFEJYkBGbxVtNp3rzax1EOuM/P/31yhVaYL7y2VDB7UKGGAtIIHNCvSZJ4ExZkFErMIxFIo0uv6xMowEgzQyrETg4djz357o+ZXviRib2c7owqLkFY6gXaaRNTLJKRhXCIHayR6qd2inF6EiZMRiLSIKC0Jpw2i4jgHo2CA/lbvRCpjqDXuiV7aeLfGzP1v2V/Gjfue3t854jNTBw9fa31NFHoq+eF7yamX/eFHDrX9KR0GWEMPVHLn3M/28D/w5bmVfHfTdt9oqZVQWuj5p548Kj/J0ZnF6PnX2QT+CtsH0sD/vkIO78nOrZ84DEDlyJ0/X3z7mJ9g62Gr4JVFadGhc864AS7h9WDwRt8eb4+3278AAAD//+0kiXk="},{"type":"event","compressed":true,"payload":"eJxkzr+O3CAQBvBXOU1tHP4MGOii1KmSKtEVwM4q3J0BGbzRabXvHjlnKUXamfm+39yhN0o32nquBTyImcME+QIe0GmOXHDmwjUwTOrKIo+WRbrKlBZxQZIwQa/7lgg87Fvx63vq/kK3nMibxSwogmPccMvQKMWidIpxTegiBaM5ei6tE1Y6pqPSDDE5FrlJzEqNKCguQQuYYLy3g8h1Dq3FLafXPh/WXGj8rtvrvNLYcjre2eMLpQEePrf2llMYuZanr7XkUbenbyW0/qsOmOASRki1DCrjbA//Ap9eei2Hm9djI7kUTEgml+9SeRRe8dlqp5X6cTaBv8P6gXTwP+9Qwt/koD5OHCZIdS+D/r/48jE/wT7C2sALg9ygReusthPcwttO4JV9PD+eH48/AQAA//9lbYiD"},{"type":"event","compressed":true,"payload":"eJxkzr+O3CAQBvBXOU1tHP4MGOii1KmSKtEVgCcKd2dABm90Wu27R86ulOLamfm+31yhN0oX2nuuBTyImcMEeQUPTgkdg12Y0y4wxCUx69CwdSWll18x8Shhgl6PPRF4OPbit/fU/UqXnMibxSwogmPccMvQKMWidIpxTegiBaM5ei6tE1Y6pqPSDDE5FrlJzEqNKCguQQuYYLy3k8h1Dq3FPafXPp/WXGj8qfvrvNHYczrfOeILpQEePrf2llMYuZanr7XkUfenbyW0/rsOmGANI6RaBpXxaA//A59eei2nm7dzI7kUTEgml+9SeRRe8dlqp5X98WgCf4XtjnTwP69Qwr/koD4eOEyQ6lEGfbz4cp8/wD7C1sALg9ygRcetdhNcwttB4HG5Pd+eb7e/AQAA///Ct4gV"}]}}`
+const publishDataResponse = `{
 	"data": {
-		"pushData": [
+		"publishData": [
 			{ 
 				"success": true
 			},

@@ -24,7 +24,7 @@ type EventPublisher struct {
 	subUrl string
 }
 
-type PushDataInput struct {
+type PublishDataInput struct {
 	Type       graphql.String  `json:"type"`
 	Compressed graphql.Boolean `json:"compressed"`
 	Payload    graphql.String  `json:"payload"`
@@ -70,13 +70,13 @@ func (p *EventPublisher) PostMeasurementEvents(events []*cloudevents.Event) ([]m
 	eventSource = sourceUrn.String()
 
 	var mutation struct {
-		PushData []struct {
+		PublishData []struct {
 			Success graphql.Boolean
 			Error   graphql.String
-		} `graphql:"pushData(data: $data)"`
+		} `graphql:"publishData(data: $data)"`
 	}
 
-	dataPayloads := make([]PushDataInput, 0, len(events))
+	dataPayloads := make([]PublishDataInput, 0, len(events))
 	for _, event := range events {
 		event.SetSource(eventSource)
 
@@ -99,7 +99,7 @@ func (p *EventPublisher) PostMeasurementEvents(events []*cloudevents.Event) ([]m
 		}
 		zlibWriter.Close()
 
-		dataPayloads = append(dataPayloads, PushDataInput{
+		dataPayloads = append(dataPayloads, PublishDataInput{
 			Type: "event",
 			Compressed: graphql.Boolean(true),
 			Payload: graphql.String(base64.StdEncoding.EncodeToString(compressedPayload.Bytes())),
@@ -110,13 +110,13 @@ func (p *EventPublisher) PostMeasurementEvents(events []*cloudevents.Event) ([]m
 		"data": dataPayloads,
 	}
 	if err := apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
-		logger.ErrorMessage("EventsAPI.PostMeasurementEvents(): pushData mutation returned an error: %s", err.Error())
+		logger.ErrorMessage("EventsAPI.PostMeasurementEvents(): publishData mutation returned an error: %s", err.Error())
 		return nil, err
 	}
-	logger.TraceMessage("EventsAPI.PostMeasurementEvents(): pushData mutation returned response: %# v", mutation)
+	logger.TraceMessage("EventsAPI.PostMeasurementEvents(): publishData mutation returned response: %# v", mutation)
 
 	errors := []monitors.PostEventErrors{}
-	for i, result := range mutation.PushData {
+	for i, result := range mutation.PublishData {
 		if !bool(result.Success) {
 			errors = append(errors, monitors.PostEventErrors{
 				Event: events[i],
