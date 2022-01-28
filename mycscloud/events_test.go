@@ -17,7 +17,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = FDescribe("Event API", func() {
+var _ = Describe("Event API", func() {
 
 	var (
 		err error
