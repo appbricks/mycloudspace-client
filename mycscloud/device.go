@@ -136,6 +136,8 @@ func (d *DeviceAPI) UpdateDeviceContext(deviceContext config.DeviceContext) erro
 
 func (d *DeviceAPI) RegisterDevice(
 	deviceName, 
+	deviceType,
+	clientVersion,
 	deviceCertRequest,
 	devicePublicKey,
 	wireguardPublicKey string,
@@ -149,10 +151,12 @@ func (d *DeviceAPI) RegisterDevice(
 					DeviceID graphql.String `graphql:"deviceID"`
 				}
 			}
-		} `graphql:"addDevice(deviceName: $deviceName, deviceKey: {certificateRequest: $deviceCertRequest, publicKey: $devicePublicKey}, accessKey: {wireguardPublicKey: $wireguardPublicKey})"`
+		} `graphql:"addDevice(deviceName: $deviceName, deviceInfo: { deviceType: $deviceType, clientVersion: $clientVersion }, deviceKey: {publicKey: $devicePublicKey, certificateRequest: $deviceCertRequest}, accessKey: {wireguardPublicKey: $wireguardPublicKey})"`
 	}
 	variables := map[string]interface{}{
 		"deviceName": graphql.String(deviceName),
+		"deviceType": graphql.String(deviceType),
+		"clientVersion": graphql.String(clientVersion),
 		"deviceCertRequest": graphql.String(deviceCertRequest),
 		"devicePublicKey": graphql.String(devicePublicKey),
 		"wireguardPublicKey": graphql.String(wireguardPublicKey),
