@@ -139,8 +139,7 @@ func (d *DeviceAPI) RegisterDevice(
 	deviceType,
 	clientVersion,
 	deviceCertRequest,
-	devicePublicKey,
-	wireguardPublicKey string,
+	devicePublicKey string,
 ) (string, string, error) {
 
 	var mutation struct {
@@ -151,7 +150,7 @@ func (d *DeviceAPI) RegisterDevice(
 					DeviceID graphql.String `graphql:"deviceID"`
 				}
 			}
-		} `graphql:"addDevice(deviceName: $deviceName, deviceInfo: { deviceType: $deviceType, clientVersion: $clientVersion }, deviceKey: {publicKey: $devicePublicKey, certificateRequest: $deviceCertRequest}, accessKey: {wireguardPublicKey: $wireguardPublicKey})"`
+		} `graphql:"addDevice(deviceName: $deviceName, deviceInfo: { deviceType: $deviceType, clientVersion: $clientVersion }, deviceKey: {publicKey: $devicePublicKey, certificateRequest: $deviceCertRequest})"`
 	}
 	variables := map[string]interface{}{
 		"deviceName": graphql.String(deviceName),
@@ -159,7 +158,6 @@ func (d *DeviceAPI) RegisterDevice(
 		"clientVersion": graphql.String(clientVersion),
 		"deviceCertRequest": graphql.String(deviceCertRequest),
 		"devicePublicKey": graphql.String(devicePublicKey),
-		"wireguardPublicKey": graphql.String(wireguardPublicKey),
 	}
 	if err := d.apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
 		logger.ErrorMessage("DeviceAPI.RegisterDevice(): addDevice mutation returned an error: %s", err.Error())
@@ -190,7 +188,7 @@ func (d *DeviceAPI) UnRegisterDevice(deviceID string) ([]string, error) {
 	return userIDs, nil
 }
 
-func (d *DeviceAPI) AddDeviceUser(deviceID, wireguardPublicKey string) (string, string, error) {
+func (d *DeviceAPI) AddDeviceUser(deviceID string) (string, string, error) {
 
 	var mutation struct {
 		AddDeviceUser struct {
@@ -200,11 +198,10 @@ func (d *DeviceAPI) AddDeviceUser(deviceID, wireguardPublicKey string) (string, 
 			User struct {
 				UserID graphql.String `graphql:"userID"`
 			}
-		} `graphql:"addDeviceUser(deviceID: $deviceID, accessKey: {wireguardPublicKey: $wireguardPublicKey})"`
+		} `graphql:"addDeviceUser(deviceID: $deviceID)"`
 	}
 	variables := map[string]interface{}{
 		"deviceID": graphql.ID(deviceID),
-		"wireguardPublicKey": graphql.String(wireguardPublicKey),
 	}
 	if err := d.apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
 		logger.ErrorMessage("DeviceAPI.AddDeviceUser(): addDeviceUser mutation returned an error: %s", err.Error())

@@ -94,6 +94,7 @@ func (s *SpaceAPI) GetSpaces() ([]*userspace.Space, error) {
 						IpAddress    graphql.String
 						Fqdn         graphql.String
 						Port         graphql.Int
+						VpnType      graphql.String
 						LocalCARoot  graphql.String `graphql:"localCARoot"`
 						Status       graphql.String
 						LastSeen	   graphql.Float
@@ -132,6 +133,7 @@ func (s *SpaceAPI) GetSpaces() ([]*userspace.Space, error) {
 				IPAddress:    string(spaceUser.Space.IpAddress),
 				FQDN:         string(spaceUser.Space.Fqdn),
 				Port:         int(spaceUser.Space.Port),
+				VpnType:      string(spaceUser.Space.VpnType),
 				LocalCARoot:  string(spaceUser.Space.LocalCARoot),
 			})	
 		}

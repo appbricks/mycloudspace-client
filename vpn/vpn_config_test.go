@@ -1,8 +1,8 @@
 package vpn_test
 
 import (
-	"fmt"
 	"net/http"
+	"regexp"
 
 	"github.com/appbricks/mycloudspace-client/mycsnode"
 	"github.com/appbricks/mycloudspace-client/vpn"
@@ -23,9 +23,9 @@ var _ = Describe("VPN Configuration", func() {
 
 		apiClient *mycsnode.ApiClient
 		handler   *mycs_mocks.MockServiceHandler
-
-		wgConfigDataText string
 	)
+
+	fixWireguardConfig := regexp.MustCompile(`(?m:^PrivateKey\s+=\s+.*$)`)
 
 	BeforeEach(func() {
 		mockNodeService = mycs_mocks.StartMockNodeServices()
@@ -40,8 +40,6 @@ var _ = Describe("VPN Configuration", func() {
 
 		_, err = apiClient.Authenticate()
 		Expect(err).ToNot(HaveOccurred())
-
-		wgConfigDataText = fmt.Sprintf(wireguardConfig, mockNodeService.LoggedInUser.WGPrivateKey)
 	})
 
 	AfterEach(func() {		
@@ -56,8 +54,9 @@ var _ = Describe("VPN Configuration", func() {
 			WithCallbackTest(
 				utils_mocks.HandleAuthHeaders(
 					apiClient, 
-					fmt.Sprintf(connectUserVPNRequest, mockNodeService.LoggedInUser.WGPublickKey), 
+					connectUserVPNRequest, 
 					connectUserVPNResponse1,
+					fixGeneratedKeyForTest,
 				),
 			)
 
@@ -74,12 +73,12 @@ var _ = Describe("VPN Configuration", func() {
 					return nil
 				},
 			).
-			RespondWith(wgConfigDataText)
+			RespondWith(wireguardConfig)
 
 		configData, err := vpn.NewVPNConfigData(apiClient)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(configData).ToNot(BeNil())
-		Expect(string(configData.Data())).To(Equal(wgConfigDataText))
+		Expect(fixWireguardConfig.ReplaceAllString(string(configData.Data()), "PrivateKey = private key")).To(Equal(wireguardConfig))
 	})
 
 	It("loads a dynamic vpn configuration", func() {
@@ -90,8 +89,9 @@ var _ = Describe("VPN Configuration", func() {
 			WithCallbackTest(
 				utils_mocks.HandleAuthHeaders(
 					apiClient, 
-					fmt.Sprintf(connectUserVPNRequest, mockNodeService.LoggedInUser.WGPublickKey), 
+					connectUserVPNRequest,
 					connectUserVPNResponse2,
+					fixGeneratedKeyForTest,
 				),
 			)
 
@@ -107,12 +107,19 @@ var _ = Describe("VPN Configuration", func() {
 		Expect(wgConfigData.PeerPublicKey).To(Equal("/Eo+2LuqrQ7mn3c6yKHLaDjZS7vITYohNR3cjWyBunw="))
 		Expect(wgConfigData.AllowedSubnets).To(Equal([]string{"0.0.0.0/0"}))
 		Expect(wgConfigData.KeepAlivePing).To(Equal(25))
-		Expect(string(configData.Data())).To(Equal(wgConfigDataText))
+		Expect(fixWireguardConfig.ReplaceAllString(string(configData.Data()), "PrivateKey = private key")).To(Equal(wireguardConfig))
 	})
 })
 
+func fixGeneratedKeyForTest(expected, actual interface{}) bool {
+	a := actual.(map[string]interface{})
+	Expect(a).NotTo(BeNil())
+	a["deviceConnectKey"] = "public key"
+	return true
+}
+
 const connectUserVPNRequest = `{
-	"deviceConnectKey": "%s"
+	"deviceConnectKey": "public key"
 }`
 const connectUserVPNResponse1 = `{
   "name": "inceptor-us-east-1"
@@ -133,7 +140,7 @@ const connectUserVPNResponse2 = `{
 }`
 
 const wireguardConfig = `[Interface]
-PrivateKey = %s
+PrivateKey = private key
 Address = 192.168.111.1/32
 DNS = 10.12.16.253
 

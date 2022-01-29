@@ -255,21 +255,32 @@ var _ = Describe("MyCS Node API Client", func() {
 
 		It("Call the api configure direct vpn connections to a space", func() {
 
+			var publicKeyInRequest interface{}
+
 			mockNodeService.TestServer.PushRequest().
 				ExpectPath("/connect").
 				ExpectMethod("POST").
 				WithCallbackTest(
 					utils_mocks.HandleAuthHeaders(
 						apiClient, 
-						fmt.Sprintf(connectUserVPNRequest, mockNodeService.LoggedInUser.WGPublickKey), 
+						connectUserVPNRequest, 
 						connectUserVPNResponse,
+						func(expected, actual interface{}) bool {
+							a := actual.(map[string]interface{})
+							Expect(a).NotTo(BeNil())
+							publicKeyInRequest = a["deviceConnectKey"]
+							a["deviceConnectKey"] = "pubKey"
+							return true
+						},
 					),
 				)
 
 			config, err := apiClient.Connect()
 			Expect(err).ToNot(HaveOccurred())
 
-			Expect(config.LoggedInUser.Name).To(Equal(mockNodeService.LoggedInUser.Name))
+			Expect(config.PublicKey).To(MatchRegexp("^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"))
+			Expect(config.PublicKey).To(Equal(publicKeyInRequest))
+			Expect(config.PrivateKey).To(MatchRegexp("^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"))
 			Expect(config.IsAdminUser).To(BeTrue())
 			Expect(config.Name).To(Equal("inceptor-us-east-1"))
 			Expect(config.VPNType).To(Equal("wireguard"))
@@ -375,7 +386,7 @@ const enableUserDeviceSuccessResponse = `{
 	"enabled": true
 }`
 const connectUserVPNRequest = `{
-	"deviceConnectKey": "%s"
+	"deviceConnectKey": "pubKey"
 }`
 const connectUserVPNResponse = `{
   "name": "inceptor-us-east-1",

@@ -125,7 +125,7 @@ var _ = Describe("Device API", func() {
 			ExpectJSONRequest(addDeviceRequest).
 			RespondWith(errorResponse)
 
-		_, _, err = deviceAPI.RegisterDevice("ken's device #7", "type007", "0.0.7", "csr007", "pub007", "wgken00")
+		_, _, err = deviceAPI.RegisterDevice("ken's device #7", "type007", "0.0.7", "csr007", "pub007")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("an error occurred"))
 		
@@ -133,7 +133,7 @@ var _ = Describe("Device API", func() {
 			ExpectJSONRequest(addDeviceRequest).
 			RespondWith(addDeviceResponse)
 		
-		idKey, deviceID, err = deviceAPI.RegisterDevice("ken's device #7", "type007", "0.0.7", "csr007", "pub007", "wgken00")
+		idKey, deviceID, err = deviceAPI.RegisterDevice("ken's device #7", "type007", "0.0.7", "csr007", "pub007")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(idKey).To(Equal("test id key"))
 		Expect(deviceID).To(Equal("new device id"))
@@ -174,7 +174,7 @@ var _ = Describe("Device API", func() {
 			ExpectJSONRequest(addDeviceUserRequest).
 			RespondWith(errorResponse)
 
-		_, _, err = deviceAPI.AddDeviceUser("a device id", "a wireguard public key")
+		_, _, err = deviceAPI.AddDeviceUser("a device id")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("an error occurred"))
 
@@ -182,7 +182,7 @@ var _ = Describe("Device API", func() {
 			ExpectJSONRequest(addDeviceUserRequest).
 			RespondWith(addDeviceUserResponse)
 		
-		deviceID, userID, err = deviceAPI.AddDeviceUser("a device id", "a wireguard public key")
+		deviceID, userID, err = deviceAPI.AddDeviceUser("a device id")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(deviceID).To(Equal("a device id"))
 		Expect(userID).To(Equal("a user id"))
@@ -260,14 +260,13 @@ const updateDeviceContextResponse = `{
 }`
 
 const addDeviceRequest = `{
-	"query": "mutation ($clientVersion:String!$deviceCertRequest:String!$deviceName:String!$devicePublicKey:String!$deviceType:String!$wireguardPublicKey:String!){addDevice(deviceName: $deviceName, deviceInfo: { deviceType: $deviceType, clientVersion: $clientVersion }, deviceKey: {publicKey: $devicePublicKey, certificateRequest: $deviceCertRequest}, accessKey: {wireguardPublicKey: $wireguardPublicKey}){idKey,deviceUser{device{deviceID}}}}",
+	"query": "mutation ($clientVersion:String!$deviceCertRequest:String!$deviceName:String!$devicePublicKey:String!$deviceType:String!){addDevice(deviceName: $deviceName, deviceInfo: { deviceType: $deviceType, clientVersion: $clientVersion }, deviceKey: {publicKey: $devicePublicKey, certificateRequest: $deviceCertRequest}){idKey,deviceUser{device{deviceID}}}}",
 	"variables": {
 		"deviceType": "type007",
 		"deviceName": "ken's device #7",
 		"clientVersion": "0.0.7",
 		"deviceCertRequest": "csr007",
-		"devicePublicKey": "pub007",
-		"wireguardPublicKey":"wgken00"
+		"devicePublicKey": "pub007"
 	}
 }`
 const addDeviceResponse = `{
@@ -299,10 +298,9 @@ const deleteDeviceResponse = `{
 }`
 
 const addDeviceUserRequest = `{
-	"query": "mutation ($deviceID:ID!$wireguardPublicKey:String!){addDeviceUser(deviceID: $deviceID, accessKey: {wireguardPublicKey: $wireguardPublicKey}){device{deviceID},user{userID}}}",
+	"query": "mutation ($deviceID:ID!){addDeviceUser(deviceID: $deviceID){device{deviceID},user{userID}}}",
 	"variables": {
-		"deviceID": "a device id",
-		"wireguardPublicKey": "a wireguard public key"
+		"deviceID": "a device id"
 	}
 }`
 const addDeviceUserResponse = `{

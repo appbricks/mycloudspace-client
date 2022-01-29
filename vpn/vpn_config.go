@@ -31,7 +31,7 @@ func NewVPNConfigData(apiClient *mycsnode.ApiClient) (vpn_common.ConfigData, err
 			wgConfigData := &WireguardConfigData{
 				apiClient:  apiClient,
 				name:       cfg.Name,
-				privateKey: cfg.LoggedInUser.WGPrivateKey,
+				privateKey: cfg.PrivateKey,
 			}
 			if err = json.Unmarshal(cfg.RawConfig, wgConfigData); err != nil {
 				return nil, err

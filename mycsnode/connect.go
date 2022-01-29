@@ -5,13 +5,14 @@ import (
 	"fmt"
 
 	"github.com/appbricks/cloud-builder/auth"
-	"github.com/appbricks/cloud-builder/userspace"
 	"github.com/mevansam/goutils/logger"
 	"github.com/mevansam/goutils/rest"
 )
 
 type VPNConfig struct {
-	LoggedInUser *userspace.User
+	PrivateKey string
+	PublicKey  string
+	
 	IsAdminUser  bool
 
 	Name    string `json:"name,omitempty"`
@@ -24,20 +25,14 @@ func (a *ApiClient) Connect() (*VPNConfig, error) {
 
 	var (
 		err error
-
-		user *userspace.User
 	)
-
-	if user, err = a.deviceContext.GetLoggedInUser(); err != nil {
-		return nil, err
-	}
 
 	type requestBody struct {
 		DeviceConnectKey string `json:"deviceConnectKey,omitempty"`
 	}
 	
 	config := VPNConfig{}
-	if config.LoggedInUser, err = a.deviceContext.GetLoggedInUser(); err != nil {
+	if config.PrivateKey, config.PublicKey, err = a.node.CreateDeviceConnectKeyPair(); err != nil {
 		return nil, err
 	}
 	config.IsAdminUser = auth.NewRoleMask(auth.Admin).LoggedInUserHasRole(a.deviceContext, a.node)
@@ -50,7 +45,7 @@ func (a *ApiClient) Connect() (*VPNConfig, error) {
 			"X-Auth-Key": a.authIDKey,
 		},
 		Body: &requestBody{ 
-			DeviceConnectKey: user.WGPublickKey,
+			DeviceConnectKey: config.PublicKey,
 		},
 	}
 	response := &rest.Response{
@@ -60,14 +55,14 @@ func (a *ApiClient) Connect() (*VPNConfig, error) {
 
 	if err = a.restApiClient.NewRequest(request).DoPost(response); err != nil {
 		logger.ErrorMessage(
-			"ApiClient.UpdateSpaceUser(): HTTP error: %s", 
+			"ApiClient.Connect(): HTTP error: %s", 
 			err.Error())
 
 		// todo: return a custom error type 
 		// with parsed error object
 		if response.Error != nil && len(errorResponse.ErrorMessage) > 0 {
 			logger.ErrorMessage(
-				"ApiClient.UpdateSpaceUser(): Error message body: Error Code: %d; Error Message: %s", 
+				"ApiClient.Connect(): Error message body: Error Code: %d; Error Message: %s", 
 				errorResponse.ErrorCode, errorResponse.ErrorMessage)
 
 			return nil, fmt.Errorf(errorResponse.ErrorMessage)
@@ -100,14 +95,14 @@ func (a *ApiClient) Disconnect() error {
 
 	if err = a.restApiClient.NewRequest(request).DoDelete(response); err != nil {
 		logger.ErrorMessage(
-			"ApiClient.UpdateSpaceUser(): HTTP error: %s", 
+			"ApiClient.Connect(): HTTP error: %s", 
 			err.Error())
 
 		// todo: return a custom error type 
 		// with parsed error object
 		if response.Error != nil && len(errorResponse.ErrorMessage) > 0 {
 			logger.ErrorMessage(
-				"ApiClient.UpdateSpaceUser(): Error message body: Error Code: %d; Error Message: %s", 
+				"ApiClient.Connect(): Error message body: Error Code: %d; Error Message: %s", 
 				errorResponse.ErrorCode, errorResponse.ErrorMessage)
 
 			return fmt.Errorf(errorResponse.ErrorMessage)

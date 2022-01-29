@@ -29,10 +29,8 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.16.0
 	github.com/sirupsen/logrus v1.7.0
-	golang.org/x/net v0.0.0-20211205041911-012df41ee64c // indirect
 	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c
-	golang.org/x/sys v0.0.0-20211205182925-97ca703d548d // indirect
-	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20211124212657-dd7407c86d22
+	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20211230205640-daad0b7ba671
 	inet.af/netaddr v0.0.0-20211027220019-c74959edd3b6
 	tailscale.com v0.0.0-00010101000000-000000000000
 )
