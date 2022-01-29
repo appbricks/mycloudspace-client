@@ -214,7 +214,7 @@ const deleteSpaceResponse = `{
 }`
 
 const getSpacesRequest = `{
-	"query": "{getUser{spaces{spaceUsers{space{spaceID,spaceName,publicKey,recipe,iaas,region,version,isEgressNode,ipAddress,fqdn,port,localCARoot,status,lastSeen},isOwner,isAdmin,isEgressNode,status}}}}"
+	"query": "{getUser{spaces{spaceUsers{space{spaceID,spaceName,publicKey,recipe,iaas,region,version,isEgressNode,ipAddress,fqdn,port,vpnType,localCARoot,status,lastSeen},isOwner,isAdmin,isEgressNode,status}}}}"
 }`
 const getSpacesResponse = `{
 	"data": {
@@ -250,7 +250,7 @@ const getSpacesResponse = `{
 }`
 
 const getSpaceNodesRequest = `{
-	"query": "{getUser{spaces{spaceUsers{space{spaceID,spaceName,publicKey,recipe,iaas,region,version,isEgressNode,ipAddress,fqdn,port,localCARoot,status,lastSeen},isOwner,isAdmin,isEgressNode,status}}}}"
+	"query": "{getUser{spaces{spaceUsers{space{spaceID,spaceName,publicKey,recipe,iaas,region,version,isEgressNode,ipAddress,fqdn,port,vpnType,localCARoot,status,lastSeen},isOwner,isAdmin,isEgressNode,status}}}}"
 }`
 const getSpaceNodesResponse = `{
 	"data": {
