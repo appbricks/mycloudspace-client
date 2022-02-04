@@ -28,7 +28,6 @@ require (
 	github.com/mitchellh/go-homedir v1.1.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.16.0
-	github.com/sirupsen/logrus v1.7.0
 	golang.org/x/oauth2 v0.0.0-20210514164344-f6687ab2804c
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20211230205640-daad0b7ba671
 	inet.af/netaddr v0.0.0-20211027220019-c74959edd3b6

@@ -65,19 +65,19 @@ var _ = Describe("Event API", func() {
 
 	It("push events to cloud api", func() {
 
-		events := []*cloudevents.Event{}
+		cloudEvents := []*cloudevents.Event{}
 		for _, e := range testEvents {
 			event := cloudevents.NewEvent()
 			err = json.Unmarshal([]byte(e), &event)
 			Expect(err).NotTo(HaveOccurred())
-			events = append(events, &event)
+			cloudEvents = append(cloudEvents, &event)
 		}
 
 		testServer.PushRequest().
 			ExpectJSONRequest(publishDataRequest).
 			RespondWith(publishDataResponse)
 
-		postErrors, err := eventPublisher.PostMeasurementEvents(events)
+		postErrors, err := eventPublisher.PostMeasurementEvents(cloudEvents)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(len(postErrors)).To(Equal(1))
 		Expect(postErrors[0].Error).To(Equal("failed to post event 49504010-9afa-4c3f-b0b8-bef2cc71d4e2"))
