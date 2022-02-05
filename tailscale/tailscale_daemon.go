@@ -173,8 +173,12 @@ func (tsd *TailscaleDaemon) recordNetworkMetrics() (time.Duration, error) {
 			recd += peer.ReceiveBytes
 			sent += peer.TransmitBytes
 		}
-		tsd.recd.Set(recd)
-		tsd.sent.Set(sent)	
+		if recd > 0 {
+			tsd.recd.Set(recd)
+		}
+		if sent > 0 {
+			tsd.sent.Set(sent)
+		}
 	}
 
 	// record metrics every 500ms
