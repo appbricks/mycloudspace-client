@@ -1,7 +1,9 @@
 package api
 
 import (
+	"net"
 	"net/http"
+	"time"
 
 	graphql "github.com/hasura/go-graphql-client"
 
@@ -22,18 +24,22 @@ func NewGraphQLClient(apiUrl, subUrl string, config config.Config) *graphql.Clie
 
 // returns a graphql client for querying
 // the MyCS cloud API service which is not
-// pooled for reuse
+// pooled for reuse and has a very short
+// timeout
 func NewGraphQLClientNoPool(apiUrl, subUrl string, config config.Config) *graphql.Client {
 
 	transport := http.DefaultTransport.(*http.Transport).Clone()
 	transport.DisableKeepAlives = true
 	transport.MaxIdleConnsPerHost = -1
-
+	transport.TLSHandshakeTimeout = 1000 * time.Millisecond
+	transport.DialContext = (&net.Dialer{ Timeout: 1000 * time.Millisecond }).DialContext
+	
 	return graphql.NewClient(apiUrl, &http.Client{
 		Transport: authHeader{
 			idToken:   config.AuthContext().GetToken().Extra("id_token").(string),
 			transport: transport,
 		},
+		Timeout: 5000 * time.Millisecond,
 	})
 }
 
