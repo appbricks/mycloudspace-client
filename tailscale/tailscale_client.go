@@ -49,6 +49,8 @@ type TailscaleClient struct {
 
 	nc network.NetworkContext
 
+	splitDestinationIPs []string
+
 	waitForExitNode bool
 	exitNodePinger  *ping.Pinger
 	
@@ -69,11 +71,17 @@ func NewTailscaleClient(
 		spaceNodes:      spaceNodes,
 
 		nc: network.NewNetworkContext(),
+
+		splitDestinationIPs: []string{},
 	}
 	tsc.ctx, tsc.cancel = context.WithCancel(context.Background())
 	
 	cli.MyCSOut = tsc
 	return tsc
+}
+
+func (tsc *TailscaleClient) AddSplitDestinations(destinations []string) {
+	tsc.splitDestinationIPs = append(tsc.splitDestinationIPs, destinations...)
 }
 
 func (tsc *TailscaleClient) Connect(
@@ -142,7 +150,9 @@ func (tsc *TailscaleClient) Connect(
 		if dnsManager, err = tsc.nc.NewDNSManager(); err != nil {
 			return err
 		}
-		if err = dnsManager.AddDNSServers(connectInfo.DNS); err != nil {
+		if err = dnsManager.AddDNSServers(
+			append([]string{ "100.100.100.100" }, connectInfo.DNS...),
+		); err != nil {
 			return err
 		}
 	}
@@ -174,6 +184,9 @@ func (tsc *TailscaleClient) Connect(
 		// add static routes via the LAN gateway required 
 		// to establish the tailscale/wireguard tunnel 
 		if err = routeManager.AddExternalRouteToIPs(exitNode.Endpoints); err != nil {
+			return err
+		}
+		if err = routeManager.AddExternalRouteToIPs(tsc.splitDestinationIPs); err != nil {
 			return err
 		}
 		// create default route via exit node for all 
