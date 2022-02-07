@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"time"
@@ -11,14 +12,13 @@ import (
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"inet.af/netaddr"
 	"tailscale.com/control/controlclient"
-	"tailscale.com/net/interfaces"
+	"tailscale.com/ipn/ipnlocal"
 	"tailscale.com/paths"
 	"tailscale.com/wgengine/router"
 
 	"github.com/appbricks/mycloudspace-client/mycscloud"
 	"github.com/appbricks/mycloudspace-client/mycsnode"
 	"github.com/mevansam/goutils/logger"
-	"github.com/mevansam/goutils/network"
 	"github.com/mevansam/goutils/utils"
 
 	"github.com/appbricks/mycloudspace-common/monitors"
@@ -39,6 +39,14 @@ type TailscaleDaemon struct {
 
 	metricsTimer *utils.ExecTimer
 	metricsError error
+
+	// Cached DNS mappings that should not
+	// not resolve through the tunnel
+	cachedDNSMappings []ipnlocal.MyCSDNSMapping
+
+	// routes to exclude from tailscale 
+	// route configuration
+	tsRoutesToExclude map[string]bool
 }
 
 type ccTransportHook struct {
@@ -46,6 +54,10 @@ type ccTransportHook struct {
 	
 	// Tailscale control client http transport
 	ccTransport *http.Transport
+}
+
+var getTSRoutesToExclude = func() map[string]bool {
+	return make(map[string]bool)
 }
 
 func NewTailscaleDaemon(
@@ -65,6 +77,9 @@ func NewTailscaleDaemon(
 
 	tsd := &TailscaleDaemon{		
 		spaceNodes: spaceNodes,
+		
+		cachedDNSMappings: []ipnlocal.MyCSDNSMapping{},
+		tsRoutesToExclude: getTSRoutesToExclude(),
 	}
 	tsd.TailscaleDaemon = tailscale_common.NewTailscaleDaemon(statePath, tsd)
 	tsd.sent = monitors.NewCounter("sent", true)
@@ -77,21 +92,63 @@ func NewTailscaleDaemon(
 	monitor.AddCounter(tsd.sent)
 	monitor.AddCounter(tsd.recd)
 	
-	// Set MyCS Hook to TailScale's 
-	// control server client
+	// Set MyCS Hooks
 	controlclient.MyCSNodeControlService = tsd
+	ipnlocal.MyCSNodeControlService = tsd
+	router.MyCSNodeControlService = tsd
 
 	return tsd
+}
+
+func (tsd *TailscaleDaemon) CacheDNSNames(dnsNames []string) ([]string, error) {
+
+	var (
+		err error
+
+		ip          net.IP
+		resolvedIPs []net.IP
+
+		ipNet  *net.IPNet
+		ipAddr netaddr.IPPrefix
+		ok     bool
+	)
+	cachedIPs := []string{}
+
+	for _, name := range dnsNames {
+
+		if resolvedIPs, err = net.LookupIP(name); err != nil {
+			return nil, err
+		}
+		mapping := ipnlocal.MyCSDNSMapping{
+			Name: name,
+			Addrs: make([]netaddr.IPPrefix, 0, len(resolvedIPs)),
+		}
+
+		for _, ip = range resolvedIPs {
+
+			addr := ip.String()
+			if _, ipNet, err = net.ParseCIDR(addr + "/32"); err != nil {
+				return nil, err
+			}
+
+			if ipAddr, ok = netaddr.FromStdIPNet(ipNet); !ok {
+				return nil, fmt.Errorf(
+					"unable to convert standard ip net '%s' to netaddr ip prefix: %s", 
+					ipNet.String(), err.Error(),
+				)
+			}
+			mapping.Addrs = append(mapping.Addrs, ipAddr)
+			cachedIPs = append(cachedIPs, ip.String())
+		}
+		tsd.cachedDNSMappings = append(tsd.cachedDNSMappings, mapping)
+	}
+	return cachedIPs, nil
 }
 
 func (tsd *TailscaleDaemon) Start() error {
 	
 	var (
 		err error
-
-		ifaceList    interfaces.List
-		ipsetBuilder netaddr.IPSetBuilder
-		ipset        *netaddr.IPSet
 	)
 
 	// start background thread to record tunnel metrics
@@ -103,38 +160,6 @@ func (tsd *TailscaleDaemon) Start() error {
 		)
 	}
 
-	// Retrieve prefix of network externally routable gateway is on.
-	// This needs to be explicitly excluded in the tailscale route
-	// logic when configuring an exit node route due to issues
-	// in the implementation of the router for freebsd/darwin.
-	if ifaceList, err = interfaces.GetList(); err != nil {
-		return err
-	}
-	defaultIface := network.NewNetworkContext().DefaultInterface()
-	if err = ifaceList.ForeachInterfaceAddress(func(iface interfaces.Interface, pfx netaddr.IPPrefix) {
-		if iface.Name == defaultIface {
-			ipsetBuilder.AddPrefix(pfx)
-		}
-	}); err != nil {
-		return err
-	}
-	if ipset, err = ipsetBuilder.IPSet(); err != nil {
-		return err
-	}
-	routesToExclude := map[string]bool{
-		"0.0.0.0/0": true,
-		"::/0": true,
-	}
-	for _, pfx := range ipset.Prefixes() {
-		routesToExclude[pfx.String()] = true
-	}
-	// routes to exclude from tailscale configuration as these will 
-	// be configured outside of the tailscale daemon to work around 
-	// tailscale exit node configuration issues in darwin
-	router.ExcludeRoute = func(pfx netaddr.IPPrefix) bool {
-		return routesToExclude[pfx.String()]
-	}
-	
 	return tsd.TailscaleDaemon.Start()
 }
 
@@ -202,7 +227,9 @@ func (tsd *TailscaleDaemon) Write(p []byte) (n int, err error) {
 	}
 }
 
-// MyCS Hook
+// MyCS Hooks
+
+// hook in - tailscale.com/control/controlclient/direct.go
 func (tsd *TailscaleDaemon) ConfigureHTTPClient(url string, httpClient *http.Client) error {
 
 	var (
@@ -259,4 +286,20 @@ func (h *ccTransportHook) RoundTrip(req *http.Request) (*http.Response, error) {
 		return nil, err
 	}
 	return h.ccTransport.RoundTrip(req)
+}
+
+// hook in - tailscale.com/ipn/ipnlocal/local.go
+func (tsd *TailscaleDaemon) ResolvedDNSNames() []ipnlocal.MyCSDNSMapping {
+	return tsd.cachedDNSMappings
+}
+
+// hook in - tailscale.com/wgengine/router/router_userspace_bsd.go
+func (tsd *TailscaleDaemon) ExcludeRoute(pfx netaddr.IPPrefix) bool {
+
+	var (
+		exclude, ok bool
+	)
+	
+	exclude, ok = tsd.tsRoutesToExclude[pfx.String()]
+	return ok && exclude
 }
