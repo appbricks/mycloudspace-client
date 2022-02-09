@@ -82,10 +82,10 @@ func NewTailscaleDaemon(
 		tsRoutesToExclude: getTSRoutesToExclude(),
 	}
 	tsd.TailscaleDaemon = tailscale_common.NewTailscaleDaemon(statePath, tsd)
-	tsd.sent = monitors.NewCounter("sent", true)
-	tsd.sent.IgnoreZeroSnapshots()
-	tsd.recd = monitors.NewCounter("recd", true)
-	tsd.recd.IgnoreZeroSnapshots()
+
+	// create network usage counters
+	tsd.sent = monitors.NewCounter("sent", true, true)
+	tsd.recd = monitors.NewCounter("recd", true, true)
 
 	// create monitors
 	monitor := monitorService.NewMonitor("space-network-mesh")
