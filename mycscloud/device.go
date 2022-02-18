@@ -128,7 +128,7 @@ func (d *DeviceAPI) UpdateDeviceContext(deviceContext config.DeviceContext) erro
 		}
 		guestUser.Active = string(query.AuthDevice.AccessType) == "guest"
 		if !guestUser.Active {
-			return fmt.Errorf("unauthorized")
+			return fmt.Errorf("unauthorized(pending)")
 		}
 	}
 	return nil
