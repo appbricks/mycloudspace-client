@@ -1,7 +1,10 @@
 package mycscloud_test
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/appbricks/cloud-builder/config"
@@ -15,6 +18,7 @@ import (
 	mycs_mocks "github.com/appbricks/mycloudspace-client/test/mocks"
 	"github.com/mevansam/goutils/crypto"
 	test_server "github.com/mevansam/goutils/test/mocks"
+	"github.com/mevansam/goutils/utils"
 )
 
 var _ = Describe("User API", func() {
@@ -55,7 +59,7 @@ var _ = Describe("User API", func() {
 			ExpectJSONRequest(getUserRequest).
 			RespondWith(errorResponse)
 
-		_, err = userAPI.GetUserConfig(user)
+		_, err = userAPI.GetUser(user)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("an error occurred"))
 
@@ -63,19 +67,62 @@ var _ = Describe("User API", func() {
 			ExpectJSONRequest(getUserRequest).
 			RespondWith(getUserResponse)
 
-		_, err := userAPI.GetUserConfig(user)
+		_, err = userAPI.GetUser(user)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("returned user does not match given user"))
+
 
 		testServer.PushRequest().
 			ExpectJSONRequest(getUserRequest).
 			RespondWith(getUserResponse)
 
 		user.UserID = "test user id"
+		user, err := userAPI.GetUser(user)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(user.RSAPublicKey).To(Equal("test public key"))
+		Expect(user.Certificate).To(Equal("test certificate"))
+	})
+
+	It("retrieves a user's config", func() {
+
+		key, err := crypto.NewRSAKey()
+		Expect(err).ToNot(HaveOccurred())
+
+		user := &userspace.User{
+			UserID: "test user id x",
+		}
+		err = user.SetKey(key)
+		Expect(err).ToNot(HaveOccurred())
+
+		configData, err := user.EncryptConfig([]byte("test config data"))
+		Expect(err).ToNot(HaveOccurred())
+		response := fmt.Sprintf(getUserConfigResponse, configData)
+
+		testServer.PushRequest().
+			ExpectJSONRequest(getUserConfigRequest).
+			RespondWith(errorResponse)
+
+		_, err = userAPI.GetUserConfig(user)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("an error occurred"))
+
+		testServer.PushRequest().
+			ExpectJSONRequest(getUserConfigRequest).
+			RespondWith(response)
+
+		_, err = userAPI.GetUserConfig(user)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("returned user does not match given user"))
+
+		testServer.PushRequest().
+			ExpectJSONRequest(getUserConfigRequest).
+			RespondWith(response)
+
+		user.UserID = "test user id"
 		config, err := userAPI.GetUserConfig(user)
 		Expect(err).ToNot(HaveOccurred())
 		
-		Expect(config).To(Equal("test config data"))
+		Expect(string(config)).To(Equal("test config data"))
 		Expect(testServer.Done()).To(BeTrue())
 	})
 
@@ -117,33 +164,68 @@ var _ = Describe("User API", func() {
 		err = user.SetKey(key)
 		Expect(err).ToNot(HaveOccurred())
 
+		timestamp := time.Now().UnixMilli()		
+		
 		testServer.PushRequest().
-			ExpectJSONRequest(updateUserConfigRequest).
 			RespondWith(errorResponse)
 
-		err = userAPI.UpdateUserConfig(user, []byte("test config data"))
+		_, err = userAPI.UpdateUserConfig(user, []byte("test config data"), timestamp)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("an error occurred"))
 
 		testServer.PushRequest().
-			ExpectJSONRequest(updateUserConfigRequest).
-			RespondWith(updateUserConfigResponse)
+			WithCallbackTest(func(w http.ResponseWriter, r *http.Request, body string) *string {
+				GinkgoRecover()
+				
+				var requestBody interface{}
+				err = json.Unmarshal([]byte(body), &requestBody)
+				Expect(err).ToNot(HaveOccurred())
 
-		err = userAPI.UpdateUserConfig(user, []byte("test config data"))
+				value, err := utils.GetValueAtPath("query", requestBody)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(value).To(Equal("mutation ($asOf:String!$config:String!){updateUserConfig(universalConfig: $config, asOf: $asOf)}"))
+
+				value, err = utils.GetValueAtPath("variables/asOf", requestBody)
+				Expect(err).ToNot(HaveOccurred())
+				Expect(value).To(Equal(strconv.FormatInt(timestamp, 10)))
+
+				value, err = utils.GetValueAtPath("variables/config", requestBody)
+				Expect(err).ToNot(HaveOccurred())
+				config, err := user.DecryptConfig(value.(string))
+				Expect(err).ToNot(HaveOccurred())
+				Expect(string(config)).To(Equal("test config data"))
+
+				response := fmt.Sprintf(updateUserConfigResponse, timestamp + 300000)
+				return &response
+			})
+
+		configTimestamp, err := userAPI.UpdateUserConfig(user, []byte("test config data"), timestamp)
 		Expect(err).ToNot(HaveOccurred())
+		Expect(configTimestamp).To(Equal(timestamp + 300000))
 	})
 })
 
 const getUserRequest = `{
-	"query": "{getUser{userID,publicKey,certificate,universalConfig}}"
+	"query": "{getUser{userID,publicKey,certificate}}"
 }`
 const getUserResponse = `{
 	"data": {
 		"getUser": {
 			"userID": "test user id",
 			"publicKey": "test public key",
-			"certificate": "test certificate",
-			"universalConfig": "test config data"
+			"certificate": "test certificate"
+		}
+	}
+}`
+
+const getUserConfigRequest = `{
+	"query": "{getUser{userID,universalConfig}}"
+}`
+const getUserConfigResponse = `{
+	"data": {
+		"getUser": {
+			"userID": "test user id",
+			"universalConfig": "%s"
 		}
 	}
 }`
@@ -163,16 +245,8 @@ const updateUserKeyResponse = `{
 	}
 }`
 
-const updateUserConfigRequest = `{
-  "query": "mutation ($config:String!){updateUserConfig(universalConfig: $config){userID}}",
-  "variables": {
-    "config": "test config data"
-  }
-}`
 const updateUserConfigResponse = `{
 	"data": {
-		"updateUserConfig": {
-			"userID": "test user id"
-		}
+		"updateUserConfig": "%d"
 	}
 }`

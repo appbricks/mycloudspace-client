@@ -21,28 +21,57 @@ func NewUserAPI(apiClient *graphql.Client) *UserAPI {
 	}
 }
 
-func (u *UserAPI) GetUserConfig(user *userspace.User) (string, error) {
+func (u *UserAPI) GetUser(user *userspace.User) (*userspace.User, error) {
 
 	var query struct {
 		GetUser struct {
 			UserID          graphql.String `graphql:"userID"`
 			PublicKey       graphql.String
 			Certificate     graphql.String
-			UniversalConfig graphql.String
 		} `graphql:"getUser"`
 	}
 	if err := u.apiClient.Query(context.Background(), &query, map[string]interface{}{}); err != nil {
-		logger.DebugMessage("UserAPI: getUsers query to retrieve user returned an error: %s", err.Error())
-		return "", err
+		logger.DebugMessage("UserAPI: getUser query to retrieve user returned an error: %s", err.Error())
+		return nil, err
 	}
-	logger.TraceMessage("UserAPI: getUsers query to retrieve user returned response: %# v", query)
+	logger.TraceMessage("UserAPI: getUser query to retrieve user returned response: %# v", query)
 
 	if (user.UserID != string(query.GetUser.UserID)) {
-		return "", fmt.Errorf("getUsers returned user does not match given user")
+		return nil, fmt.Errorf("returned user does not match given user")
 	}
 	user.RSAPublicKey = string(query.GetUser.PublicKey)
 	user.Certificate = string(query.GetUser.Certificate)
-	return string(query.GetUser.UniversalConfig), nil
+
+	return user, nil
+}
+
+func (u *UserAPI) GetUserConfig(user *userspace.User) ([]byte, error) {
+
+	var (
+		err error
+
+		configData []byte
+	)
+
+	var query struct {
+		GetUser struct {
+			UserID          graphql.String `graphql:"userID"`
+			UniversalConfig graphql.String
+		} `graphql:"getUser"`
+	}
+	if err = u.apiClient.Query(context.Background(), &query, map[string]interface{}{}); err != nil {
+		logger.DebugMessage("UserAPI: getUser query to retrieve user returned an error: %s", err.Error())
+		return nil, err
+	}
+	logger.TraceMessage("UserAPI: getUser query to retrieve user returned response: %# v", query)
+
+	if (user.UserID != string(query.GetUser.UserID)) {
+		return nil, fmt.Errorf("returned user does not match given user")
+	}
+	if configData, err = user.DecryptConfig(string(query.GetUser.UniversalConfig)); err != nil {
+		return nil, err
+	}
+	return configData, nil
 }
 
 func (u *UserAPI) UpdateUserKey(user *userspace.User) error {
@@ -68,24 +97,34 @@ func (u *UserAPI) UpdateUserKey(user *userspace.User) error {
 	return nil
 }
 
-func (u *UserAPI) UpdateUserConfig(user *userspace.User, configData []byte) error {
+func (u *UserAPI) UpdateUserConfig(user *userspace.User, config []byte, asOfTimestamp int64) (int64, error) {
+
+	var (
+		err error
+
+		configData      string
+		configTimestamp int64
+	)
+
+	if configData, err = user.EncryptConfig(config); err != nil {
+		return 0, err
+	}
 
 	var mutation struct {
-		UpdateUserConfig struct {
-			UserID graphql.String `graphql:"userID"`
-		} `graphql:"updateUserConfig(universalConfig: $config)"`
+		UpdateUserConfig string `graphql:"updateUserConfig(universalConfig: $config, asOf: $asOf)"`
 	}
 	variables := map[string]interface{}{
 		"config": graphql.String(configData),
+		"asOf": graphql.String(strconv.FormatInt(asOfTimestamp, 10)),
 	}
-	if err := u.apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
+	if err = u.apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
 		logger.DebugMessage("UserAPI: updateUserConfig mutation returned an error: %s", err.Error())
-		return err
+		return 0, err
 	}
 	logger.TraceMessage("UserAPI: updateUserConfig mutation returned response: %# v", mutation)
-
-	if (user.UserID != string(mutation.UpdateUserConfig.UserID)) {
-		return fmt.Errorf("updateUserConfig returned user does not match given user")
+	
+	if configTimestamp, err = strconv.ParseInt(mutation.UpdateUserConfig, 10, 64); err != nil {
+		return 0, err
 	}
-	return nil
+	return configTimestamp, nil
 }
