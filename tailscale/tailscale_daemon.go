@@ -240,7 +240,7 @@ func (tsd *TailscaleDaemon) ConfigureHTTPClient(url string, httpClient *http.Cli
 
 	if space := tsd.spaceNodes.LookupSpaceByEndpoint(url); space != nil {
 
-		logger.TraceMessage(
+		logger.DebugMessage(
 			"TailscaleDaemon.ConfigureHTTPClient(): Authorizing access to space: %s", 
 			space.Key())
 
