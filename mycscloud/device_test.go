@@ -96,7 +96,7 @@ var _ = Describe("Device API", func() {
 
 		err = deviceAPI.UpdateDeviceContext(deviceContext)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("an error occurred"))
+		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
 
 		testServer.PushRequest().
 			ExpectJSONRequest(updateDeviceContextRequest).
@@ -127,7 +127,7 @@ var _ = Describe("Device API", func() {
 
 		_, _, err = deviceAPI.RegisterDevice("ken's device #7", "type007", "0.0.7", "csr007", "pub007")
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("an error occurred"))
+		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
 		
 		testServer.PushRequest().
 			ExpectJSONRequest(addDeviceRequest).
@@ -151,7 +151,7 @@ var _ = Describe("Device API", func() {
 
 		_, err = deviceAPI.UnRegisterDevice("a device id")
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("an error occurred"))
+		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
 
 		testServer.PushRequest().
 			ExpectJSONRequest(deleteDeviceRequest).
@@ -176,7 +176,7 @@ var _ = Describe("Device API", func() {
 
 		_, _, err = deviceAPI.AddDeviceUser("a device id")
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("an error occurred"))
+		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
 
 		testServer.PushRequest().
 			ExpectJSONRequest(addDeviceUserRequest).
@@ -200,7 +200,7 @@ var _ = Describe("Device API", func() {
 
 		_, _, err = deviceAPI.RemoveDeviceUser("a device id")
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("an error occurred"))
+		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
 
 		testServer.PushRequest().
 			ExpectJSONRequest(deleteDeviceUserRequest).

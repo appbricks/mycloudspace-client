@@ -32,19 +32,8 @@ const errorResponse = `{
 	"data": {},
 	"errors": [
 		{
-			"path": [
-			],
-			"data": null,
 			"errorType": "Error",
-			"errorInfo": null,
-			"locations": [
-				{
-					"line": 2,
-					"column": 3,
-					"sourceName": null
-				}
-			],
-			"message": "an error occurred"
+			"message": "a test error occurred"
 		}
 	]
 }`

@@ -55,7 +55,7 @@ var _ = Describe("Space API", func() {
 
 		err = spaceAPI.AddSpace(tgt, true)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("an error occurred"))
+		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
 
 		testServer.PushRequest().
 			ExpectJSONRequest(addSpaceRequest).
@@ -83,7 +83,7 @@ var _ = Describe("Space API", func() {
 
 		_, err = spaceAPI.DeleteSpace(tgt)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("an error occurred"))
+		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
 
 		testServer.PushRequest().
 			ExpectJSONRequest(deleteSpaceRequest).
@@ -106,7 +106,7 @@ var _ = Describe("Space API", func() {
 
 		_, err = spaceAPI.GetSpaces()
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("an error occurred"))
+		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
 
 		testServer.PushRequest().
 			ExpectJSONRequest(getSpacesRequest).

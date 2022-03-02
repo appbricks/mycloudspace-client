@@ -61,7 +61,7 @@ var _ = Describe("User API", func() {
 
 		_, err = userAPI.GetUser(user)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("an error occurred"))
+		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
 
 		testServer.PushRequest().
 			ExpectJSONRequest(getUserRequest).
@@ -70,7 +70,6 @@ var _ = Describe("User API", func() {
 		_, err = userAPI.GetUser(user)
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("returned user does not match given user"))
-
 
 		testServer.PushRequest().
 			ExpectJSONRequest(getUserRequest).
@@ -104,7 +103,7 @@ var _ = Describe("User API", func() {
 
 		_, err = userAPI.GetUserConfig(user)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("an error occurred"))
+		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
 
 		testServer.PushRequest().
 			ExpectJSONRequest(getUserConfigRequest).
@@ -143,7 +142,7 @@ var _ = Describe("User API", func() {
 
 		err = userAPI.UpdateUserKey(user)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("an error occurred"))
+		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
 
 		testServer.PushRequest().
 			ExpectJSONRequest(request).
@@ -171,7 +170,7 @@ var _ = Describe("User API", func() {
 
 		_, err = userAPI.UpdateUserConfig(user, []byte("test config data"), timestamp)
 		Expect(err).To(HaveOccurred())
-		Expect(err.Error()).To(Equal("an error occurred"))
+		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
 
 		testServer.PushRequest().
 			WithCallbackTest(func(w http.ResponseWriter, r *http.Request, body string) *string {
