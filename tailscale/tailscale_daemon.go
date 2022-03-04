@@ -88,9 +88,11 @@ func NewTailscaleDaemon(
 	tsd.recd = monitors.NewCounter("recd", true, true)
 
 	// create monitors
-	monitor := monitorService.NewMonitor("space-network-mesh")
-	monitor.AddCounter(tsd.sent)
-	monitor.AddCounter(tsd.recd)
+	if monitorService != nil {
+		monitor := monitorService.NewMonitor("space-network-mesh")
+		monitor.AddCounter(tsd.sent)
+		monitor.AddCounter(tsd.recd)
+	}
 	
 	// Set MyCS Hooks
 	controlclient.MyCSNodeControlService = tsd
