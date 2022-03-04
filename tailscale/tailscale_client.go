@@ -76,7 +76,10 @@ func NewTailscaleClient(
 	}
 	tsc.ctx, tsc.cancel = context.WithCancel(context.Background())
 	
-	cli.MyCSOut = tsc
+	// override tailscale client cli 
+	// std ouput destinations
+	cli.Stdout = tsc
+	cli.Stderr = tsc
 	return tsc
 }
 
