@@ -84,8 +84,8 @@ func NewTailscaleDaemon(
 	tsd.TailscaleDaemon = tailscale_common.NewTailscaleDaemon(statePath, tsd)
 
 	// create network usage counters
-	tsd.sent = monitors.NewCounter("sent", true, true)
 	tsd.recd = monitors.NewCounter("recd", true, true)
+	tsd.sent = monitors.NewCounter("sent", true, true)
 
 	// create monitors
 	if monitorService != nil {
@@ -155,7 +155,7 @@ func (tsd *TailscaleDaemon) Start() error {
 
 	// start background thread to record tunnel metrics
 	tsd.metricsTimer = utils.NewExecTimer(context.Background(), tsd.recordNetworkMetrics, false)
-	if err = tsd.metricsTimer.Start(500); err != nil {
+	if err = tsd.metricsTimer.Start(1000); err != nil {
 		logger.ErrorMessage(
 			"TailscaleDaemon.Start(): Unable to start metrics collection job: %s", 
 			err.Error(),
@@ -167,7 +167,7 @@ func (tsd *TailscaleDaemon) Start() error {
 
 func (tsd *TailscaleDaemon) Stop() {
 	if tsd.metricsTimer != nil {
-		tsd.metricsTimer.Stop()
+		_ = tsd.metricsTimer.Stop()
 	}
 	if tsd.apiClient != nil {
 		tsd.spaceNodes.ReleaseApiClientForSpace(tsd.apiClient)
