@@ -37,6 +37,10 @@ var connStatusMsgs = []string{
 	"Not connected",
 }
 
+var configureDNS = func(tsc *TailscaleClient, nameServers []string) error { return nil }
+var configureExitNode = func(tsc *TailscaleClient, exitNode *mycsnode_common.TSNode) error { return nil }
+var waitForExitNode = false
+
 type TailscaleClient struct {
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -98,10 +102,7 @@ func (tsc *TailscaleClient) Connect(
 		controlServer string
 		connectInfo   *mycsnode.SpaceMeshConnectInfo
 
-		exitNode *mycsnode_common.TSNode		
-
-		dnsManager   network.DNSManager
-		routeManager network.RouteManager
+		exitNode *mycsnode_common.TSNode
 	)
 
 	if tsc.apiClient, err = tsc.spaceNodes.GetApiClientForSpace(space); err != nil {
@@ -126,7 +127,7 @@ func (tsc *TailscaleClient) Connect(
 	}
 	if egressViaSpace {
 		if space.CanUseAsEgressNode() {
-			tsc.waitForExitNode = true
+			tsc.waitForExitNode = waitForExitNode
 			exitNode = &connectInfo.SpaceNode
 			upArgs["exitNodeIP"] = exitNode.IP
 
@@ -145,59 +146,15 @@ func (tsc *TailscaleClient) Connect(
 		return err
 	}
 
-	// the darwin tailscale golang package currently does not 
-	// handle configuring DNS and exit node routes. so manually 
-	// configure dns and routes.
 	if useSpaceDNS {
-		// configure space DNS
-		if dnsManager, err = tsc.nc.NewDNSManager(); err != nil {
-			return err
-		}
-		if err = dnsManager.AddDNSServers(
-			append([]string{ "100.100.100.100" }, connectInfo.DNS...),
-		); err != nil {
+		if err = configureDNS(tsc, connectInfo.DNS); err != nil {
 			return err
 		}
 	}
-	if exitNode != nil {		
-		// wait until exit node is reachable 
-		// before adding the default route to it. 
-		// exit if exit node is not reachable within 
-		// the provided timeout
-		if tsc.exitNodePinger, err = ping.NewPinger(exitNode.IP); err != nil {
+	if exitNode != nil {
+		if err = configureExitNode(tsc, exitNode); err != nil {
 			return err
 		}
-		tsc.exitNodePinger.Timeout = time.Second * 30
-		tsc.exitNodePinger.OnRecv = func(pkt *ping.Packet) {
-			logger.TraceMessage(
-				"TailscaleClient.Connect(): Received ping echo from exit node %s in space network mesh.",
-				exitNode.IP,
-			)
-			tsc.waitForExitNode = false
-			tsc.exitNodePinger.Stop()
-		}
-		if err = tsc.exitNodePinger.Run(); err != nil {
-			logger.ErrorMessage("TailscaleClient.Connect(): Unable to ping exit node: %s", err.Error())
-			return err
-		}
-		// configure static egress routes for the tunnel
-		if routeManager, err = tsc.nc.NewRouteManager(); err != nil {
-			return err
-		}	
-		// add static routes via the LAN gateway required 
-		// to establish the tailscale/wireguard tunnel 
-		if err = routeManager.AddExternalRouteToIPs(exitNode.Endpoints); err != nil {
-			return err
-		}
-		if err = routeManager.AddExternalRouteToIPs(tsc.splitDestinationIPs); err != nil {
-			return err
-		}
-		// create default route via exit node for all 
-		// other internet traffic
-		if err = routeManager.AddDefaultRoute(exitNode.IP); err != nil {
-			return err
-		}
-		tsc.connState = Connected
 	}
 	return nil
 }
@@ -209,7 +166,7 @@ func (tsc *TailscaleClient) Disconnect() error {
 	)
 
 	tsc.cancel()
-	if tsc.waitForExitNode {
+	if tsc.waitForExitNode && tsc.exitNodePinger != nil {
 		tsc.exitNodePinger.Stop()
 	}
 	if tsc.apiClient != nil {

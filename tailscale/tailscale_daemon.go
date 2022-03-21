@@ -185,11 +185,18 @@ func (tsd *TailscaleDaemon) recordNetworkMetrics() (time.Duration, error) {
 	)
 	
 	if device, err = tsd.WireguardDevice(); err != nil {
-		logger.ErrorMessage(
-			"TailscaleDaemon.recordNetworkMetrics(): Failed to retrieve wireguard device information: %s", 
-			err.Error(),
-		)
-		tsd.metricsError = err
+		if err.Error() == tailscale_common.ErrNoDevice {
+			logger.TraceMessage(
+				"TailscaleDaemon.recordNetworkMetrics(): Wireguard device not initialized.",
+			)
+
+		} else {
+			logger.ErrorMessage(
+				"TailscaleDaemon.recordNetworkMetrics(): Failed to retrieve wireguard device information: %s", 
+				err.Error(),
+			)
+			tsd.metricsError = err	
+		}
 
 	} else {
 		tsd.metricsError = nil
@@ -257,7 +264,11 @@ func (tsd *TailscaleDaemon) ConfigureHTTPClient(url string, httpClient *http.Cli
 		localCARoot := space.GetApiCARoot()
 		if len(localCARoot) > 0 {
 			if certPool, err = x509.SystemCertPool(); err != nil {
-				return err
+				logger.DebugMessage(
+					"TailscaleDaemon.ConfigureHTTPClient(): Using new empty cert pool due to error retrieving system cert pool.: %s", 
+					err.Error(),
+				)
+				certPool = x509.NewCertPool()
 			}
 			certPool.AppendCertsFromPEM([]byte(localCARoot))
 			ccTransportHook.ccTransport.TLSClientConfig.RootCAs = certPool
