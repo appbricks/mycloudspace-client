@@ -1,27 +1,15 @@
 package mycsnode
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/appbricks/cloud-builder/auth"
+	"github.com/appbricks/mycloudspace-common/vpn"
 	"github.com/mevansam/goutils/logger"
 	"github.com/mevansam/goutils/rest"
 )
 
-type VPNConfig struct {
-	PrivateKey string
-	PublicKey  string
-	
-	IsAdminUser  bool
-
-	Name    string `json:"name,omitempty"`
-	VPNType string `json:"vpnType,omitempty"`
-	
-	RawConfig json.RawMessage `json:"config,omitempty"`
-}
-
-func (a *ApiClient) Connect() (*VPNConfig, error) {
+func (a *ApiClient) Connect() (*vpn.ServiceConfig, error) {
 
 	var (
 		err error
@@ -31,7 +19,7 @@ func (a *ApiClient) Connect() (*VPNConfig, error) {
 		DeviceConnectKey string `json:"deviceConnectKey,omitempty"`
 	}
 	
-	config := VPNConfig{}
+	config := vpn.ServiceConfig{}
 	if config.PrivateKey, config.PublicKey, err = a.node.CreateDeviceConnectKeyPair(); err != nil {
 		return nil, err
 	}
