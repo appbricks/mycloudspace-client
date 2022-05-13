@@ -189,12 +189,12 @@ func (sn *SpaceNodes) GetApiClientForSpace(space userspace.SpaceNode) (*mycsnode
 		if err = ref.apiClient.Start(); err != nil {
 			return nil, err
 		}
-		if !ref.apiClient.WaitForAuth() {
-			return nil, fmt.Errorf("timedout waiting for space node api at \"%s\" to authenticate", space.Key())
-		}
 		sn.spaceAPIClients[space.Key()] = ref
 	} else {
 		ref.refCount++
+	}
+	if !ref.apiClient.WaitForAuth() {
+		return nil, fmt.Errorf("timedout waiting for space node api at \"%s\" to authenticate", space.Key())
 	}
 	return ref.apiClient, nil
 }
