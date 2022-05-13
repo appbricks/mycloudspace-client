@@ -68,8 +68,10 @@ func (u *UserAPI) GetUserConfig(user *userspace.User) ([]byte, error) {
 	if (user.UserID != string(query.GetUser.UserID)) {
 		return nil, fmt.Errorf("returned user does not match given user")
 	}
-	if configData, err = user.DecryptConfig(string(query.GetUser.UniversalConfig)); err != nil {
-		return nil, err
+	if len(query.GetUser.UniversalConfig) > 0 {
+		if configData, err = user.DecryptConfig(string(query.GetUser.UniversalConfig)); err != nil {
+			return nil, err
+		}	
 	}
 	return configData, nil
 }
