@@ -73,14 +73,28 @@ type ErrorResponse struct {
 	ErrorMessage string `json:"errorMessage"`
 }
 
-const authTimeout    = time.Duration(5000)
-var authRetryTimeout = time.Duration(500)
+var authTimeout   = (10 * time.Second)/time.Millisecond // timeout waiting for auth in 10 seconds
+var authRetryTime = (2 * time.Second)/time.Millisecond  // if auth fails then retry in 2 seconds
 
 func init() {
+	
+	var (
+		err error
+
+		timeout string
+		t       int
+	)
+
+	// override auth timeout
+	if timeout = os.Getenv("CBS_NODE_AUTH_TIMEOUT"); len(timeout) > 0 {
+		if t, err = strconv.Atoi(timeout); err == nil {
+			authTimeout = time.Duration(t)
+		}
+	}
 	// override auth retry timeout
-	if timeout := os.Getenv("CBS_NODE_AUTH_RETRY_TIMEOUT"); len(timeout) > 0 {
-		if t, err := strconv.Atoi(timeout); err == nil {
-			authRetryTimeout = time.Duration(t)
+	if timeout = os.Getenv("CBS_NODE_AUTH_RETRY_TIMEOUT"); len(timeout) > 0 {
+		if t, err = strconv.Atoi(timeout); err == nil {
+			authRetryTime = time.Duration(t)
 		}
 	}
 }
@@ -141,18 +155,21 @@ func (a *ApiClient) authCallback() (time.Duration, error) {
 
 	var (
 		err error
+
+		isAuthenticated bool
 	)
 
-	if _, err = a.Authenticate(); err != nil {
+	if isAuthenticated, err = a.Authenticate(); err != nil {
 		logger.DebugMessage(
 			"ApiClient.authCallback(): Authentication failed with err: %s", 
 			err.Error())
-
-		return authRetryTimeout, nil
 	}
+	if !isAuthenticated {
+		return authRetryTime, nil
+	}
+
 	// re-authenticate 50ms before key expires
-	now := time.Now().UnixNano() / int64(time.Millisecond)
-	return time.Duration(a.keyTimeoutAt - now - 50), nil
+	return time.Duration(a.keyTimeoutAt - time.Now().UnixMilli() - 50), nil
 }
 
 func (a *ApiClient) Authenticate() (bool, error) {
@@ -188,7 +205,7 @@ func (a *ApiClient) Authenticate() (bool, error) {
 		authReqKey := &AuthReqKey{
 			UserID: a.deviceContext.GetLoggedInUserID(),
 			DeviceECDHPublicKey: ecdhKeyPublicKey,
-			Nonce: time.Now().UnixNano() / int64(time.Millisecond),
+			Nonce: time.Now().UnixMilli(),
 		}
 		if authReqKeyJSON, err = json.Marshal(authReqKey); err != nil {
 			return false, err
