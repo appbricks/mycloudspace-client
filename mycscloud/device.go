@@ -44,12 +44,30 @@ func (d *DeviceAPI) UpdateDeviceContext(deviceContext config.DeviceContext) erro
 			Device struct {
 				DeviceID graphql.String `graphql:"deviceID"`
 				DeviceName graphql.String
+				DeviceType graphql.String
+				ManagedDevices []struct {
+					DeviceID graphql.String `graphql:"deviceID"`
+					Users struct {
+						DeviceUsers []struct {
+							User struct {
+								UserID graphql.String `graphql:"userID"`
+								UserName graphql.String
+								FirstName graphql.String
+								MiddleName graphql.String
+								FamilyName graphql.String
+							}
+						}
+					}	
+				}
 				Users struct {
 					DeviceUsers []struct {
 						User struct {
 							UserID graphql.String `graphql:"userID"`
 							UserName graphql.String	
-						}
+							FirstName graphql.String
+							MiddleName graphql.String
+							FamilyName graphql.String
+					}
 						IsOwner graphql.Boolean	
 						Status graphql.String	
 					}
@@ -65,12 +83,11 @@ func (d *DeviceAPI) UpdateDeviceContext(deviceContext config.DeviceContext) erro
 		logger.ErrorMessage("DeviceAPI.UpdateDeviceContext(): authDevice query returned an error: %s", err.Error())
 		return err
 	}
-	logger.TraceMessage("DeviceAPI.UpdateDeviceContext(): authDevice query returned response: %# v", query)
+	logger.DebugMessage("DeviceAPI.UpdateDeviceContext(): authDevice query returned response: %# v", query)
 
 	if string(query.AuthDevice.AccessType) == "admin" {
 		// check if logged in user is the admin
-		userID, _ = deviceContext.GetOwnerUserID()
-		if deviceContext.GetLoggedInUserID() != userID {
+		if deviceContext.GetLoggedInUserID() != ownerUserID {
 			logger.ErrorMessage(
 				"DeviceAPI.UpdateDeviceContext(): authDevice query returned \"admin\" access type for a user that is not the device owner.",
 			)
@@ -89,7 +106,38 @@ func (d *DeviceAPI) UpdateDeviceContext(deviceContext config.DeviceContext) erro
 		device := deviceContext.GetDevice()
 		guestUsers := deviceContext.ResetGuestUsers()
 
+		// update managed devices in context
+		managedDevicesInContext := make(map[string]*userspace.Device)
+		for _, d := range deviceContext.GetManagedDevices() {
+			managedDevicesInContext[d.DeviceID] = d
+		}
+		for _, d := range query.AuthDevice.Device.ManagedDevices {
+			deviceID = string(d.DeviceID)
+			if md := managedDevicesInContext[deviceID]; md != nil {
+				for _, du := range d.Users.DeviceUsers {
+					userID = string(du.User.UserID)
+					if userID != ownerUserID {
+						md.DeviceUsers = append(md.DeviceUsers, 
+							&userspace.User{
+								UserID: userID,
+								Name: string(du.User.UserName),
+								FirstName: string(du.User.FirstName),
+								MiddleName: string(du.User.MiddleName),
+								FamilyName: string(du.User.FamilyName),
+							},
+						)	
+					}
+				}
+				delete(managedDevicesInContext, deviceID)
+			}
+		}
+		for deviceID = range managedDevicesInContext {
+			deviceContext.DeleteManageDevice(deviceID)
+		}
+
+		// updated device users
 		device.Name = string(query.AuthDevice.Device.DeviceName)
+		device.Type = string(query.AuthDevice.Device.DeviceType)
 		for _, deviceUser := range query.AuthDevice.Device.Users.DeviceUsers {
 			userID = string(deviceUser.User.UserID)
 			userName = string(deviceUser.User.UserName)
@@ -105,6 +153,9 @@ func (d *DeviceAPI) UpdateDeviceContext(deviceContext config.DeviceContext) erro
 				}
 			} else {
 				if guestUser, exists = guestUsers[userName]; exists && guestUser.UserID ==userID {
+					guestUser.FirstName = string(deviceUser.User.FirstName)
+					guestUser.MiddleName = string(deviceUser.User.MiddleName)
+					guestUser.FamilyName = string(deviceUser.User.FamilyName)
 					guestUser.Active = (status == "active")
 					deviceContext.AddGuestUser(guestUser)
 				} else {
@@ -139,7 +190,8 @@ func (d *DeviceAPI) RegisterDevice(
 	deviceType,
 	clientVersion,
 	deviceCertRequest,
-	devicePublicKey string,
+	devicePublicKey,
+	managedBy string,
 ) (string, string, error) {
 
 	var mutation struct {
@@ -150,7 +202,7 @@ func (d *DeviceAPI) RegisterDevice(
 					DeviceID graphql.String `graphql:"deviceID"`
 				}
 			}
-		} `graphql:"addDevice(deviceName: $deviceName, deviceInfo: { deviceType: $deviceType, clientVersion: $clientVersion }, deviceKey: {publicKey: $devicePublicKey, certificateRequest: $deviceCertRequest})"`
+		} `graphql:"addDevice(deviceName: $deviceName, deviceInfo: { deviceType: $deviceType, clientVersion: $clientVersion, managedBy: $managedBy }, deviceKey: {publicKey: $devicePublicKey, certificateRequest: $deviceCertRequest})"`
 	}
 	variables := map[string]interface{}{
 		"deviceName": graphql.String(deviceName),
@@ -158,6 +210,7 @@ func (d *DeviceAPI) RegisterDevice(
 		"clientVersion": graphql.String(clientVersion),
 		"deviceCertRequest": graphql.String(deviceCertRequest),
 		"devicePublicKey": graphql.String(devicePublicKey),
+		"managedBy": graphql.String(managedBy),
 	}
 	if err := d.apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
 		logger.ErrorMessage("DeviceAPI.RegisterDevice(): addDevice mutation returned an error: %s", err.Error())
@@ -188,7 +241,7 @@ func (d *DeviceAPI) UnRegisterDevice(deviceID string) ([]string, error) {
 	return userIDs, nil
 }
 
-func (d *DeviceAPI) AddDeviceUser(deviceID string) (string, string, error) {
+func (d *DeviceAPI) AddDeviceUser(deviceID, userID string) (string, string, error) {
 
 	var mutation struct {
 		AddDeviceUser struct {
@@ -198,10 +251,11 @@ func (d *DeviceAPI) AddDeviceUser(deviceID string) (string, string, error) {
 			User struct {
 				UserID graphql.String `graphql:"userID"`
 			}
-		} `graphql:"addDeviceUser(deviceID: $deviceID)"`
+		} `graphql:"addDeviceUser(deviceID: $deviceID, userID: $userID)"`
 	}
 	variables := map[string]interface{}{
 		"deviceID": graphql.ID(deviceID),
+		"userID": graphql.ID(userID),
 	}
 	if err := d.apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
 		logger.ErrorMessage("DeviceAPI.AddDeviceUser(): addDeviceUser mutation returned an error: %s", err.Error())
@@ -211,7 +265,7 @@ func (d *DeviceAPI) AddDeviceUser(deviceID string) (string, string, error) {
 	return string(mutation.AddDeviceUser.Device.DeviceID), string(mutation.AddDeviceUser.User.UserID), nil
 }
 
-func (d *DeviceAPI) RemoveDeviceUser(deviceID string) (string, string, error) {
+func (d *DeviceAPI) RemoveDeviceUser(deviceID, userID string) (string, string, error) {
 
 	var mutation struct {
 		DeleteDeviceUser struct {
@@ -221,10 +275,11 @@ func (d *DeviceAPI) RemoveDeviceUser(deviceID string) (string, string, error) {
 			User struct {
 				UserID graphql.String `graphql:"userID"`
 			}
-		} `graphql:"deleteDeviceUser(deviceID: $deviceID)"`
+		} `graphql:"deleteDeviceUser(deviceID: $deviceID, userID: $userID)"`
 	}
 	variables := map[string]interface{}{
 		"deviceID": graphql.ID(deviceID),
+		"userID": graphql.ID(userID),
 	}
 	if err := d.apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
 		logger.ErrorMessage("DeviceAPI.RemoveDeviceUser(): deleteDeviceUser mutation returned an error: %s", err.Error())

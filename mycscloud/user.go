@@ -21,6 +21,46 @@ func NewUserAPI(apiClient *graphql.Client) *UserAPI {
 	}
 }
 
+func (u *UserAPI) UserSearch(name string) ([]*userspace.User, error) {
+
+	var (
+		users []*userspace.User
+	)
+
+	var query struct {
+		UserSearch []struct {
+			UserID     graphql.String `graphql:"userID"`
+			UserName   graphql.String
+			FirstName  graphql.String
+			MiddleName graphql.String
+			FamilyName graphql.String
+		} `graphql:"userSearch(filter: { userName: $userName }, limit: 5)"`
+	}
+	variables := map[string]interface{}{
+		"userName": graphql.String(name),
+	}
+	if err := u.apiClient.Query(context.Background(), &query, variables); err != nil {
+		logger.ErrorMessage("UserAPI.UserSearch(): userSearch query returned an error: %s", err.Error())
+		return nil, err
+	}
+	logger.TraceMessage("UserAPI.UserSearch(): userSearch query returned response: %# v", query)
+
+	if numUsers := len(query.UserSearch); numUsers > 0 {
+		users = make([]*userspace.User, 0, numUsers)
+		for _, u := range query.UserSearch {
+			users = append(users, &userspace.User{
+				UserID: string(u.UserID),
+				Name: string(u.UserName),
+				FirstName: string(u.FirstName),
+				MiddleName: string(u.MiddleName),
+				FamilyName: string(u.FamilyName),
+			})
+		}
+	}
+	
+	return users, nil
+}
+
 func (u *UserAPI) GetUser(user *userspace.User) (*userspace.User, error) {
 
 	var query struct {

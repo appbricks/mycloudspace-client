@@ -70,6 +70,21 @@ var _ = Describe("Device API", func() {
 		device = deviceContext.SetDeviceID("zyxw", "1234", "New Test Device")
 		Expect(device).ToNot(BeNil())
 
+		managedDevice, err := deviceContext.NewManagedDevice()
+		Expect(err).ToNot(HaveOccurred())
+		managedDevice.DeviceID = "0987"
+		managedDevice.Name = "Managed Test Device to be deleted"
+		managedDevice.Type = "Android"
+		managedDevice, err = deviceContext.NewManagedDevice()
+		Expect(err).ToNot(HaveOccurred())
+		managedDevice.DeviceID = "5678"
+		managedDevice.Name = "Managed Test Device"
+		managedDevice.Type = "iOS"
+
+		managedDevices := deviceContext.GetManagedDevices()
+		Expect(len(managedDevices)).To(Equal(2))
+		Expect(managedDevices[1].Name).To(Equal("Managed Test Device"))
+
 		owner, err := deviceContext.NewOwnerUser("0000", "owner")		
 		owner.Active = true
 		Expect(err).ToNot(HaveOccurred())
@@ -113,6 +128,10 @@ var _ = Describe("Device API", func() {
 		guest3, exists = deviceContext.GetGuestUser("guest3")
 		Expect(exists).To(BeTrue())
 		Expect(guest3.Active).To(BeFalse())
+
+		managedDevices = deviceContext.GetManagedDevices()
+		Expect(len(managedDevices)).To(Equal(1))
+		Expect(managedDevices[0].Name).To(Equal("Managed Test Device"))
 	})
 
 	It("registers a device", func() {
@@ -125,7 +144,7 @@ var _ = Describe("Device API", func() {
 			ExpectJSONRequest(addDeviceRequest).
 			RespondWith(errorResponse)
 
-		_, _, err = deviceAPI.RegisterDevice("ken's device #7", "type007", "0.0.7", "csr007", "pub007")
+		_, _, err = deviceAPI.RegisterDevice("ken's device #7", "type007", "0.0.7", "csr007", "pub007", "")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
 		
@@ -133,7 +152,7 @@ var _ = Describe("Device API", func() {
 			ExpectJSONRequest(addDeviceRequest).
 			RespondWith(addDeviceResponse)
 		
-		idKey, deviceID, err = deviceAPI.RegisterDevice("ken's device #7", "type007", "0.0.7", "csr007", "pub007")
+		idKey, deviceID, err = deviceAPI.RegisterDevice("ken's device #7", "type007", "0.0.7", "csr007", "pub007", "")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(idKey).To(Equal("test id key"))
 		Expect(deviceID).To(Equal("new device id"))
@@ -174,7 +193,7 @@ var _ = Describe("Device API", func() {
 			ExpectJSONRequest(addDeviceUserRequest).
 			RespondWith(errorResponse)
 
-		_, _, err = deviceAPI.AddDeviceUser("a device id")
+		_, _, err = deviceAPI.AddDeviceUser("a device id", "")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
 
@@ -182,7 +201,7 @@ var _ = Describe("Device API", func() {
 			ExpectJSONRequest(addDeviceUserRequest).
 			RespondWith(addDeviceUserResponse)
 		
-		deviceID, userID, err = deviceAPI.AddDeviceUser("a device id")
+		deviceID, userID, err = deviceAPI.AddDeviceUser("a device id", "")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(deviceID).To(Equal("a device id"))
 		Expect(userID).To(Equal("a user id"))
@@ -198,7 +217,7 @@ var _ = Describe("Device API", func() {
 			ExpectJSONRequest(deleteDeviceUserRequest).
 			RespondWith(errorResponse)
 
-		_, _, err = deviceAPI.RemoveDeviceUser("a device id")
+		_, _, err = deviceAPI.RemoveDeviceUser("a device id", "a user id")
 		Expect(err).To(HaveOccurred())
 		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
 
@@ -206,7 +225,7 @@ var _ = Describe("Device API", func() {
 			ExpectJSONRequest(deleteDeviceUserRequest).
 			RespondWith(deleteDeviceUserResponse)
 		
-		deviceID, userID, err = deviceAPI.RemoveDeviceUser("a device id")
+		deviceID, userID, err = deviceAPI.RemoveDeviceUser("a device id", "a user id")
 		Expect(err).ToNot(HaveOccurred())
 		Expect(deviceID).To(Equal("a device id"))
 		Expect(userID).To(Equal("a user id"))
@@ -214,7 +233,7 @@ var _ = Describe("Device API", func() {
 })
 
 const updateDeviceContextRequest = `{
-	"query": "query ($idKey:String!){authDevice(idKey: $idKey){accessType,device{deviceID,deviceName,users{deviceUsers{user{userID,userName},isOwner,status}}}}}",
+	"query": "query ($idKey:String!){authDevice(idKey: $idKey){accessType,device{deviceID,deviceName,deviceType,managedDevices{deviceID,users{deviceUsers{user{userID,userName,firstName,middleName,familyName}}}},users{deviceUsers{user{userID,userName,firstName,middleName,familyName},isOwner,status}}}}}",
 	"variables": {
 		"idKey": "zyxw"
 	}
@@ -226,6 +245,12 @@ const updateDeviceContextResponse = `{
 			"device": {
 				"deviceID": "1234",
 				"deviceName": "New Test Device (updated)",
+				"deviceType": "MacBook",
+				"managedDevices": [
+					{
+						"deviceID": "5678"
+					}
+				],
 				"users": {
 					"deviceUsers": [
 						{
@@ -260,13 +285,14 @@ const updateDeviceContextResponse = `{
 }`
 
 const addDeviceRequest = `{
-	"query": "mutation ($clientVersion:String!$deviceCertRequest:String!$deviceName:String!$devicePublicKey:String!$deviceType:String!){addDevice(deviceName: $deviceName, deviceInfo: { deviceType: $deviceType, clientVersion: $clientVersion }, deviceKey: {publicKey: $devicePublicKey, certificateRequest: $deviceCertRequest}){idKey,deviceUser{device{deviceID}}}}",
+	"query": "mutation ($clientVersion:String!$deviceCertRequest:String!$deviceName:String!$devicePublicKey:String!$deviceType:String!$managedBy:String!){addDevice(deviceName: $deviceName, deviceInfo: { deviceType: $deviceType, clientVersion: $clientVersion, managedBy: $managedBy }, deviceKey: {publicKey: $devicePublicKey, certificateRequest: $deviceCertRequest}){idKey,deviceUser{device{deviceID}}}}",
 	"variables": {
 		"deviceType": "type007",
 		"deviceName": "ken's device #7",
 		"clientVersion": "0.0.7",
 		"deviceCertRequest": "csr007",
-		"devicePublicKey": "pub007"
+		"devicePublicKey": "pub007",
+		"managedBy": ""
 	}
 }`
 const addDeviceResponse = `{
@@ -298,9 +324,10 @@ const deleteDeviceResponse = `{
 }`
 
 const addDeviceUserRequest = `{
-	"query": "mutation ($deviceID:ID!){addDeviceUser(deviceID: $deviceID){device{deviceID},user{userID}}}",
+	"query": "mutation ($deviceID:ID!$userID:ID!){addDeviceUser(deviceID: $deviceID, userID: $userID){device{deviceID},user{userID}}}",
 	"variables": {
-		"deviceID": "a device id"
+		"deviceID": "a device id",
+		"userID": ""
 	}
 }`
 const addDeviceUserResponse = `{
@@ -317,9 +344,10 @@ const addDeviceUserResponse = `{
 }`
 
 const deleteDeviceUserRequest = `{
-	"query": "mutation ($deviceID:ID!){deleteDeviceUser(deviceID: $deviceID){device{deviceID},user{userID}}}",
+	"query": "mutation ($deviceID:ID!$userID:ID!){deleteDeviceUser(deviceID: $deviceID, userID: $userID){device{deviceID},user{userID}}}",
 	"variables": {
-		"deviceID": "a device id"
+		"deviceID": "a device id",
+		"userID": "a user id"
 	}
 }`
 const deleteDeviceUserResponse = `{

@@ -49,6 +49,25 @@ var _ = Describe("User API", func() {
 		testServer.Stop()
 	})
 
+	It("searches for a user", func() {
+
+		testServer.PushRequest().
+			ExpectJSONRequest(userSearchRequest).
+			RespondWith(errorResponse)
+
+		_, err = userAPI.UserSearch("ram")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
+
+		testServer.PushRequest().
+			ExpectJSONRequest(userSearchRequest).
+			RespondWith(userSearchResponse)
+
+		users, err := userAPI.UserSearch("ram")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(len(users)).To(Equal(2))
+	})
+	
 	It("retrieves a user", func() {
 
 		user := &userspace.User{
@@ -203,6 +222,33 @@ var _ = Describe("User API", func() {
 		Expect(configTimestamp).To(Equal(timestamp + 300000))
 	})
 })
+
+const userSearchRequest = `{
+	"query": "query ($userName:String!){userSearch(filter: { userName: $userName }, limit: 5){userID,userName,firstName,middleName,familyName}}",
+	"variables": {
+    "userName": "ram"
+  }
+}`
+const userSearchResponse = `{
+	"data": {
+		"userSearch": [
+			{
+				"userID": "12345",
+				"userName": "ramsey",
+				"firstName": "Ramsey",
+				"middleName": "X",
+				"familyName": "Havier"
+			},
+			{
+				"userID": "67890",
+				"userName": "ramiro",
+				"firstName": "Ramiro",
+				"middleName": "E",
+				"familyName": "Sales"
+			}
+		]
+	}
+}`
 
 const getUserRequest = `{
 	"query": "{getUser{userID,publicKey,certificate}}"
