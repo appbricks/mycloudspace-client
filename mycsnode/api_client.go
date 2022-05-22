@@ -13,6 +13,7 @@ import (
 
 	"github.com/appbricks/cloud-builder/config"
 	"github.com/appbricks/cloud-builder/userspace"
+	"github.com/appbricks/mycloudspace-common/vpn"
 	"github.com/mevansam/goutils/crypto"
 	"github.com/mevansam/goutils/logger"
 	"github.com/mevansam/goutils/rest"
@@ -305,6 +306,18 @@ func (a *ApiClient) SetAuthorized(req *http.Request) error {
 		return fmt.Errorf("client not authenticated with mycs space node")
 	}
 	return nil
+}
+
+//
+// vpn.Service implementation
+//
+
+func (a *ApiClient) Connect() (*vpn.ServiceConfig, error) {
+	return a.CreateConnectConfig("", "")
+}
+
+func (a *ApiClient) Disconnect() error {
+	return a.DeleteConnectConfig()
 }
 
 func (a *ApiClient) GetSpaceNode() userspace.SpaceNode {

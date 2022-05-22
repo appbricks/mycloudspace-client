@@ -9,7 +9,7 @@ import (
 	"github.com/mevansam/goutils/rest"
 )
 
-func (a *ApiClient) Connect() (*vpn.ServiceConfig, error) {
+func (a *ApiClient) CreateConnectConfig(managedDeviceID, managedUserID string) (*vpn.ServiceConfig, error) {
 
 	var (
 		err error
@@ -17,6 +17,12 @@ func (a *ApiClient) Connect() (*vpn.ServiceConfig, error) {
 
 	type requestBody struct {
 		DeviceConnectKey string `json:"deviceConnectKey,omitempty"`
+
+		// managed device connection for a guest user. 
+		// if not provided then a connection config for 
+		// the authenticated device and user will be created
+		ManagedDeviceID     string `json:"managedDeviceID,omitempty"`
+		ManagedDeviceUserID string `json:"managedDeviceUserID,omitempty"`
 	}
 	
 	config := vpn.ServiceConfig{}
@@ -34,6 +40,8 @@ func (a *ApiClient) Connect() (*vpn.ServiceConfig, error) {
 		},
 		Body: &requestBody{ 
 			DeviceConnectKey: config.PublicKey,
+			ManagedDeviceID: managedDeviceID,
+			ManagedDeviceUserID: managedUserID,
 		},
 	}
 	response := &rest.Response{
@@ -62,7 +70,7 @@ func (a *ApiClient) Connect() (*vpn.ServiceConfig, error) {
 	return &config, nil
 }
 
-func (a *ApiClient) Disconnect() error {
+func (a *ApiClient) DeleteConnectConfig() error {
 
 	var (
 		err error
