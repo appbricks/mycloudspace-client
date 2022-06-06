@@ -96,6 +96,31 @@ func NewMockConfig(sourceDirPath string) (config.Config, error) {
 	tgt.RSAPublicKey = "PubKey3"
 	tgtCtx.SaveTarget("", tgt)
 
+	if tgt, err = tgtCtx.NewTarget("simple", "aws"); err != nil {
+		return nil, err
+	}
+	if inputForm, err = tgt.Recipe.InputForm(); err != nil {
+		return nil, err
+	}
+	if err = inputForm.SetFieldValue("name", "test-simple-deployment"); err != nil {
+		return nil, err
+	}
+	if err = inputForm.SetFieldValue("test_simple_input_1", "testsimple1"); err != nil {
+		return nil, err
+	}
+	if err = inputForm.SetFieldValue("test_simple_input_2", "testsimple2"); err != nil {
+		return nil, err
+	}
+	if inputForm, err = tgt.Provider.InputForm(); err != nil {
+		return nil, err
+	}
+	if err = inputForm.SetFieldValue("region", "us-west-2"); err != nil {
+		return nil, err
+	}
+	tgt.SpaceID = "126e0de1-d422-4200-9486-25b108d6cc8d"	
+	tgt.RSAPublicKey = "PubKey4"
+	tgtCtx.SaveTarget("", tgt)
+
 	// set up an auth context instance to use for tests
 	authContext := config.NewAuthContext()
 	authContext.SetToken(
