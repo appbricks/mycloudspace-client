@@ -91,14 +91,14 @@ func (a *ApiClient) DeleteConnectConfig() error {
 
 	if err = a.restApiClient.NewRequest(request).DoDelete(response); err != nil {
 		logger.ErrorMessage(
-			"ApiClient.Connect(): HTTP error: %s", 
+			"ApiClient.DeleteConnectConfig(): HTTP error: %s", 
 			err.Error())
 
 		// todo: return a custom error type 
 		// with parsed error object
 		if response.Error != nil && len(errorResponse.ErrorMessage) > 0 {
 			logger.ErrorMessage(
-				"ApiClient.Connect(): Error message body: Error Code: %d; Error Message: %s", 
+				"ApiClient.DeleteConnectConfig(): Error message body: Error Code: %d; Error Message: %s", 
 				errorResponse.ErrorCode, errorResponse.ErrorMessage)
 
 			return fmt.Errorf(errorResponse.ErrorMessage)
