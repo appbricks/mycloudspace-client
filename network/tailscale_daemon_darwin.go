@@ -1,7 +1,7 @@
 //go:build darwin || freebsd
 // +build darwin freebsd
 
-package tailscale
+package network
 
 import (
 	"github.com/mevansam/goutils/logger"

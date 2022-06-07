@@ -1,4 +1,4 @@
-package tailscale
+package network
 
 import (
 	"context"
@@ -177,8 +177,18 @@ func (tsc *TailscaleClient) Disconnect() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5 * time.Second)
 	defer cancel()
 
-	err = cli.RunLogout(ctx)
-	cli.RunDown(ctx)
+	if err = cli.RunLogout(ctx); err != nil {
+		logger.ErrorMessage(
+			"TailscaleClient.Disconnect(): Error logging tailscale from space network: %s",
+			err.Error(),
+		)
+	}
+	if err = cli.RunDown(ctx); err != nil {
+		logger.ErrorMessage(
+			"TailscaleClient.Disconnect(): Error shutting down tailscale daemon %s",
+			err.Error(),
+		)
+	}
 
 	// clear any network configuration 
 	// setup for the mesh tunnel

@@ -1,4 +1,4 @@
-package tailscale
+package network
 
 import (
 	"context"
