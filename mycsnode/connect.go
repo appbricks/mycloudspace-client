@@ -9,7 +9,12 @@ import (
 	"github.com/mevansam/goutils/rest"
 )
 
-func (a *ApiClient) CreateConnectConfig(managedDeviceID, managedUserID string) (*vpn.ServiceConfig, error) {
+func (a *ApiClient) CreateConnectConfig(
+	useSpaceDNS, 
+	useSpaceAsEgress bool,
+	managedDeviceID, 
+	managedUserID string,
+) (*vpn.ServiceConfig, error) {
 
 	var (
 		err error
@@ -18,6 +23,9 @@ func (a *ApiClient) CreateConnectConfig(managedDeviceID, managedUserID string) (
 	type requestBody struct {
 		DeviceConnectKey string `json:"deviceConnectKey,omitempty"`
 
+		UseSpaceDNS      bool `json:"useSpaceDNS"`
+		UseSpaceAsEgress bool `json:"useSpaceAsEgress"`
+	
 		// managed device connection for a guest user. 
 		// if not provided then a connection config for 
 		// the authenticated device and user will be created
@@ -40,6 +48,8 @@ func (a *ApiClient) CreateConnectConfig(managedDeviceID, managedUserID string) (
 		},
 		Body: &requestBody{ 
 			DeviceConnectKey: config.PublicKey,
+			UseSpaceDNS: useSpaceDNS,
+			UseSpaceAsEgress: useSpaceAsEgress,
 			ManagedDeviceID: managedDeviceID,
 			ManagedDeviceUserID: managedUserID,
 		},
