@@ -313,7 +313,7 @@ func (a *ApiClient) SetAuthorized(req *http.Request) error {
 //
 
 func (a *ApiClient) Connect() (*vpn.ServiceConfig, error) {
-	return a.CreateConnectConfig("", "")
+	return a.CreateConnectConfig(true, true, "", "")
 }
 
 func (a *ApiClient) Disconnect() error {
