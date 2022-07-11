@@ -99,10 +99,10 @@ func (s *SpaceAPI) GetSpaces() ([]*userspace.Space, error) {
 						Status       graphql.String
 						LastSeen	   graphql.Float
 					}
-					IsOwner      graphql.Boolean
-					IsAdmin      graphql.Boolean
-					IsEgressNode graphql.Boolean
-					Status       graphql.String
+					IsOwner         graphql.Boolean
+					IsAdmin         graphql.Boolean
+					CanUseForEgress graphql.Boolean `graphql:"canUseSpaceForEgress"`
+					Status          graphql.String
 				}
 			}
 		} `graphql:"getUser"`
@@ -128,7 +128,7 @@ func (s *SpaceAPI) GetSpaces() ([]*userspace.Space, error) {
 				LastSeen:     uint64(float64(spaceUser.Space.LastSeen)),
 				IsOwned:      bool(spaceUser.IsOwner),
 				IsAdmin:      bool(spaceUser.IsAdmin),
-				IsEgressNode: bool(spaceUser.Space.IsEgressNode) && bool(spaceUser.IsEgressNode),
+				IsEgressNode: bool(spaceUser.Space.IsEgressNode) && bool(spaceUser.CanUseForEgress),
 				AccessStatus: string(spaceUser.Status),
 				IPAddress:    string(spaceUser.Space.IpAddress),
 				FQDN:         string(spaceUser.Space.Fqdn),
