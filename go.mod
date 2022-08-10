@@ -30,7 +30,7 @@ require (
 	github.com/onsi/gomega v1.18.1
 	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5
 	golang.zx2c4.com/wireguard/wgctrl v0.0.0-20220208144051-fde48d68ee68
-	inet.af/netaddr v0.0.0-20211027220019-c74959edd3b6
+	inet.af/netaddr v0.0.0-20220617031823-097006376321
 	tailscale.com v0.0.0-00010101000000-000000000000
 )
 
@@ -162,17 +162,17 @@ require (
 	go.uber.org/zap v1.17.0 // indirect
 	go4.org/intern v0.0.0-20220301175310-a089fc204883 // indirect
 	go4.org/mem v0.0.0-20210711025021-927187094b94 // indirect
-	go4.org/unsafe/assume-no-moving-gc v0.0.0-20211027215541-db492cf91b37 // indirect
+	go4.org/unsafe/assume-no-moving-gc v0.0.0-20220617031537-928513b29760 // indirect
 	golang.org/x/crypto v0.0.0-20220427172511-eb4f295cb31f // indirect
-	golang.org/x/net v0.0.0-20220516155154-20f960328961 // indirect
-	golang.org/x/sync v0.0.0-20220513210516-0976fa681c29 // indirect
-	golang.org/x/sys v0.0.0-20220513210249-45d2b4557a2a // indirect
+	golang.org/x/net v0.0.0-20220607020251-c690dde0001d // indirect
+	golang.org/x/sync v0.0.0-20220601150217-0de741cfad7f // indirect
+	golang.org/x/sys v0.0.0-20220610221304-9f5ed59c137d // indirect
 	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	golang.org/x/time v0.0.0-20211116232009-f0f3c7e86c11 // indirect
 	golang.org/x/xerrors v0.0.0-20220411194840-2f41105eb62f // indirect
 	golang.zx2c4.com/wintun v0.0.0-20211104114900-415007cec224 // indirect
-	golang.zx2c4.com/wireguard v0.0.0-20220317000134-95b48cdb3961 // indirect
+	golang.zx2c4.com/wireguard v0.0.0-20220703234212-c31a7b1ab478 // indirect
 	golang.zx2c4.com/wireguard/windows v0.4.10 // indirect
 	google.golang.org/api v0.70.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
