@@ -49,13 +49,6 @@ type TailscaleDaemon struct {
 	tsRoutesToExclude map[string]bool
 }
 
-type ccTransportHook struct {
-	tsd *TailscaleDaemon
-	
-	// Tailscale control client http transport
-	ccTransport *http.Transport
-}
-
 var getTSRoutesToExclude = func() map[string]bool {
 	return make(map[string]bool)
 }
@@ -253,10 +246,7 @@ func (tsd *TailscaleDaemon) ConfigureHTTPClient(url string, httpClient *http.Cli
 			"TailscaleDaemon.ConfigureHTTPClient(): Authorizing access to space: %s", 
 			space.Key())
 
-		ccTransportHook := &ccTransportHook{
-			tsd:         tsd,
-			ccTransport: httpClient.Transport.(*http.Transport),
-		}
+		htTrasport := httpClient.Transport.(*http.Transport)
 		
 		// add locally signed ca root of space node
 		// to the control client http transport's 
@@ -271,11 +261,14 @@ func (tsd *TailscaleDaemon) ConfigureHTTPClient(url string, httpClient *http.Cli
 				certPool = x509.NewCertPool()
 			}
 			certPool.AppendCertsFromPEM([]byte(localCARoot))
-			ccTransportHook.ccTransport.TLSClientConfig.RootCAs = certPool
-			ccTransportHook.ccTransport.TLSClientConfig.InsecureSkipVerify = false
-			ccTransportHook.ccTransport.TLSClientConfig.VerifyConnection = nil
+			htTrasport.TLSClientConfig.RootCAs = certPool
+			htTrasport.TLSClientConfig.InsecureSkipVerify = false
+			htTrasport.TLSClientConfig.VerifyConnection = nil
+
+		} else {
+			htTrasport.TLSClientConfig.InsecureSkipVerify = true
+			htTrasport.TLSClientConfig.VerifyConnection = nil
 		}
-		httpClient.Transport = ccTransportHook
 
 		// create node api client and start background auth
 		if tsd.apiClient, err = tsd.spaceNodes.GetApiClientForSpace(space); err != nil {
@@ -287,18 +280,6 @@ func (tsd *TailscaleDaemon) ConfigureHTTPClient(url string, httpClient *http.Cli
 		return fmt.Errorf(
 			"tailscale daemon requested an invalid space url to login to: %s", url)
 	}
-}
-
-func (h *ccTransportHook) RoundTrip(req *http.Request) (*http.Response, error) {
-
-	var (
-		err error
-	)
-
-	if err = h.tsd.apiClient.SetAuthorized(req); err != nil {
-		return nil, err
-	}
-	return h.ccTransport.RoundTrip(req)
 }
 
 // hook in - tailscale.com/ipn/ipnlocal/local.go
