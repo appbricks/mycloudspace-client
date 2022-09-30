@@ -13,6 +13,7 @@ import (
 
 	"github.com/appbricks/cloud-builder/config"
 	"github.com/appbricks/cloud-builder/userspace"
+	"github.com/appbricks/mycloudspace-common/mycsnode"
 	"github.com/appbricks/mycloudspace-common/vpn"
 	"github.com/mevansam/goutils/crypto"
 	"github.com/mevansam/goutils/logger"
@@ -50,25 +51,6 @@ type ApiClient struct {
 	authTimeout     time.Duration
 }
 
-type AuthRequest struct {
-	DeviceIDKey string `json:"deviceIDKey"`
-	AuthReqKey  string `json:"authReqKey"`
-}
-type AuthReqKey struct {
-	UserID              string `json:"userID"`
-	DeviceECDHPublicKey string `json:"deviceECDHPublicKey"`
-	Nonce               int64  `json:"nonce"`
-}
-type AuthResponse struct {
-	AuthRespKey string `json:"authRespKey"`
-	AuthIDKey   string `json:"authIDKey"`
-}
-type AuthRespKey struct {
-	NodeECDHPublicKey string `json:"nodeECDHPublicKey"`
-	Nonce             int64  `json:"nonce"`
-	TimeoutAt         int64  `json:"timeoutAt"`
-	DeviceName        string `json:"deviceName"`
-}
 type ErrorResponse struct {
 	ErrorCode    int    `json:"errorCode"`
 	ErrorMessage string `json:"errorMessage"`
@@ -185,7 +167,7 @@ func (a *ApiClient) Authenticate() (bool, error) {
 		authReqKeyJSON,
 		authRespKeyJSON []byte
 
-		authResponse  AuthResponse
+		authResponse  mycsnode.AuthResponse
 		errorResponse ErrorResponse
 
 		encryptionKey []byte
@@ -203,9 +185,9 @@ func (a *ApiClient) Authenticate() (bool, error) {
 		if ecdhKeyPublicKey, err = ecdhKey.PublicKey(); err != nil {
 			return false, err
 		}
-		authReqKey := &AuthReqKey{
-			UserID: a.deviceContext.GetLoggedInUserID(),
-			DeviceECDHPublicKey: ecdhKeyPublicKey,
+		authReqKey := &mycsnode.AuthReqKey{
+			RefID: a.deviceContext.GetLoggedInUserID(),
+			ECDHKey: ecdhKeyPublicKey,
 			Nonce: time.Now().UnixMilli(),
 		}
 		if authReqKeyJSON, err = json.Marshal(authReqKey); err != nil {
@@ -218,13 +200,13 @@ func (a *ApiClient) Authenticate() (bool, error) {
 		if authReqKeyEncrypted, err = a.nodePublicKey.EncryptBase64(authReqKeyJSON); err != nil {
 			return false, err
 		}
-		authRequest := &AuthRequest{
-			DeviceIDKey: a.deviceContext.GetDeviceIDKey(),
+		authRequest := &mycsnode.AuthRequest{
+			AuthReqIDKey: a.deviceContext.GetDeviceIDKey(),
 			AuthReqKey: authReqKeyEncrypted,
 		}
 	
 		request := &rest.Request{
-			Path: "/auth",
+			Path: "/authDevice",
 			Body: authRequest,
 		}
 		response := &rest.Response{
@@ -252,7 +234,7 @@ func (a *ApiClient) Authenticate() (bool, error) {
 		if authRespKeyJSON, err = a.deviceRSAKey.DecryptBase64(authResponse.AuthRespKey); err != nil {
 			return false, err
 		}
-		authRespKey := &AuthRespKey{}
+		authRespKey := &mycsnode.AuthRespKey{}
 		if err = json.Unmarshal(authRespKeyJSON, authRespKey); err != nil {
 			return false, err
 		}
@@ -261,20 +243,20 @@ func (a *ApiClient) Authenticate() (bool, error) {
 			authReqKey.Nonce, authRespKey)
 	
 		device := a.deviceContext.GetDevice()
-		if authRespKey.DeviceName != device.Name || 
+		if authRespKey.RefName != device.Name || 
 			authRespKey.Nonce != authReqKey.Nonce {
 			
 			return false, fmt.Errorf("invalid auth response")
 		}	
 	
-		if encryptionKey, err = ecdhKey.SharedSecret(authRespKey.NodeECDHPublicKey); err != nil {
+		if encryptionKey, err = ecdhKey.SharedSecret(authRespKey.NodeECDHKey); err != nil {
 			return false, err
 		}
 		if a.crypt, err = crypto.NewCrypt(encryptionKey); err != nil {
 			return false, err
 		}
 		a.keyTimeoutAt = authRespKey.TimeoutAt
-		a.authIDKey = authResponse.AuthIDKey
+		a.authIDKey = authResponse.AuthRespIDKey
 	}
 	a.isAuthenticated = true
 	return true, nil

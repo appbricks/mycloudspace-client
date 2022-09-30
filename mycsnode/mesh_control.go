@@ -22,7 +22,7 @@ func (a *ApiClient) CreateMeshAuthKey(expiresIn int64) (*SpaceMeshConnectInfo, e
 	errorResponse := ErrorResponse{}
 
 	request := &rest.Request{
-		Path: "/meshAuthKey",
+		Path: "/meshDeviceAuthKey",
 		Headers: rest.NV{
 			"X-Auth-Key": a.authIDKey,
 		},
