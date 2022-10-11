@@ -3,6 +3,7 @@ package mycsnode
 import (
 	"fmt"
 
+	"github.com/appbricks/mycloudspace-common/mycsnode"
 	mycsnode_common "github.com/appbricks/mycloudspace-common/mycsnode"
 	"github.com/mevansam/goutils/logger"
 	"github.com/mevansam/goutils/rest"
@@ -19,12 +20,12 @@ func (a *ApiClient) CreateMeshAuthKey(expiresIn int64) (*SpaceMeshConnectInfo, e
 	)
 
 	responseBody := mycsnode_common.CreateMeshAuthKeyResp{}
-	errorResponse := ErrorResponse{}
+	errorResponse := mycsnode.ErrorResponse{}
 
 	request := &rest.Request{
 		Path: "/meshDeviceAuthKey",
 		Headers: rest.NV{
-			"X-Auth-Key": a.authIDKey,
+			"X-Auth-Key": a.AuthIDKey,
 		},
 		Body: &mycsnode_common.CreateMeshAuthKeyReq{ 
 			ExpiresIn: expiresIn,
@@ -35,7 +36,7 @@ func (a *ApiClient) CreateMeshAuthKey(expiresIn int64) (*SpaceMeshConnectInfo, e
 		Error: &errorResponse,
 	}
 
-	if err = a.restApiClient.NewRequest(request).DoPost(response); err != nil {
+	if err = a.RestApiClient.NewRequest(request).DoPost(response); err != nil {
 		logger.ErrorMessage(
 			"ApiClient.CreateMeshAuthKey(): HTTP error: %s", 
 			err.Error())

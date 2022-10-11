@@ -2,11 +2,10 @@ package mycsnode_test
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/appbricks/mycloudspace-client/mycsnode"
 
-	mycs_mocks "github.com/appbricks/mycloudspace-client/test/mocks"
+	mycs_mocks "github.com/appbricks/mycloudspace-common/test/mocks"
 	utils_mocks "github.com/mevansam/goutils/test/mocks"
 
 	. "github.com/onsi/ginkgo"
@@ -29,86 +28,6 @@ var _ = Describe("MyCS Node API Client", func() {
 		mockNodeService.Stop()
 	})
 
-	Context("Authentication", func() {
-
-		It("Creates an API client and authenticates", func() {
-			apiClient := mockNodeService.NewApiClient()
-			handler := mockNodeService.NewServiceHandler()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(apiClient.IsRunning()).To(BeTrue())
-
-			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/auth").
-				ExpectMethod("POST").
-				WithCallbackTest(handler.SendAuthResponse)
-
-			isAuthenticated, err := apiClient.Authenticate()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(isAuthenticated).To(BeTrue())
-			Expect(mockNodeService.TestServer.Done()).To(BeTrue())
-			handler.ValidateEncryption(apiClient)
-
-			Expect(apiClient.IsAuthenticated()).To(BeTrue())
-			time.Sleep(500 * time.Millisecond)
-			Expect(apiClient.IsAuthenticated()).To(BeTrue())
-			time.Sleep(500 * time.Millisecond)
-			Expect(apiClient.IsAuthenticated()).To(BeFalse())
-
-			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/auth").
-				ExpectMethod("POST").
-				WithCallbackTest(handler.SendAuthResponse)
-
-			_, err = apiClient.Authenticate()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(apiClient.IsAuthenticated()).To(BeTrue())
-			Expect(mockNodeService.TestServer.Done()).To(BeTrue())
-		})
-
-		It("Creates an API client and keeps it authenticated in the background", func() {
-			apiClient := mockNodeService.NewApiClient()
-			handler := mockNodeService.NewServiceHandler()
-			Expect(err).ToNot(HaveOccurred())
-			Expect(apiClient.IsRunning()).To(BeTrue())
-
-			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/auth").
-				ExpectMethod("POST").
-				RespondWithError(authErrorResponse, 400)
-			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/auth").
-				ExpectMethod("POST").
-				RespondWithError(authErrorResponse, 400)
-			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/auth").
-				ExpectMethod("POST").
-				WithCallbackTest(handler.SendAuthResponse)
-			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/auth").
-				ExpectMethod("POST").
-				WithCallbackTest(handler.SendAuthResponse)
-			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/auth").
-				ExpectMethod("POST").
-				WithCallbackTest(handler.SendAuthResponse)
-
-			err = apiClient.Start()
-			Expect(err).NotTo(HaveOccurred())
-			Expect(apiClient.IsAuthenticated()).To(BeFalse())
-			time.Sleep(510 * time.Millisecond)
-			Expect(apiClient.IsAuthenticated()).To(BeFalse())
-			time.Sleep(500 * time.Millisecond)
-			Expect(apiClient.IsAuthenticated()).To(BeTrue())
-			time.Sleep(1000 * time.Millisecond)
-			Expect(apiClient.IsAuthenticated()).To(BeTrue())
-			time.Sleep(1000 * time.Millisecond)
-			Expect(apiClient.IsAuthenticated()).To(BeTrue())
-			Expect(mockNodeService.TestServer.Done()).To(BeTrue())
-			apiClient.Stop()
-			Expect(err).NotTo(HaveOccurred())
-		})
-	})
-
 	Context("API Calls", func() {
 
 		var (
@@ -117,16 +36,21 @@ var _ = Describe("MyCS Node API Client", func() {
 		)
 
 		BeforeEach(func() {
-			apiClient = mockNodeService.NewApiClient()
+			apiClient, err = mycsnode.NewApiClient(
+				mockNodeService.TestConfig, 
+				mockNodeService.TestTarget,
+			)
+			Expect(err).ToNot(HaveOccurred())
 			Expect(apiClient.IsRunning()).To(BeTrue())
 
 			handler = mockNodeService.NewServiceHandler()
 			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/auth").
+				ExpectPath("/authDevice").
 				WithCallbackTest(handler.SendAuthResponse)
 
 			_, err := apiClient.Authenticate()
 			Expect(err).ToNot(HaveOccurred())
+			Expect(apiClient.WaitForAuth()).To(BeTrue())
 		})
 
 		It("Call the api to get the list of active users for the target", func() {
@@ -302,7 +226,7 @@ var _ = Describe("MyCS Node API Client", func() {
 		It("Call the api create a mesh auth key", func() {
 
 			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/meshAuthKey").
+				ExpectPath("/meshDeviceAuthKey").
 				ExpectMethod("POST").
 				WithCallbackTest(utils_mocks.HandleAuthHeaders(apiClient, createMesgAuthKeyRequest, createMesgAuthKeyResponse))
 
@@ -386,7 +310,9 @@ const enableUserDeviceSuccessResponse = `{
 	"enabled": true
 }`
 const connectUserVPNRequest = `{
-	"deviceConnectKey": "pubKey"
+	"deviceConnectKey": "pubKey",
+	"useSpaceAsEgress": true,
+	"useSpaceDNS": true
 }`
 const connectUserVPNResponse = `{
   "name": "inceptor-us-east-1",

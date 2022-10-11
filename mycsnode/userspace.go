@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/appbricks/cloud-builder/userspace"
+	"github.com/appbricks/mycloudspace-common/mycsnode"
 	"github.com/mevansam/goutils/logger"
 	"github.com/mevansam/goutils/rest"
 )
@@ -15,12 +16,12 @@ func (a *ApiClient) GetSpaceUsers() ([]*userspace.SpaceUser, error) {
 	)
 
 	users := []*userspace.SpaceUser{}
-	errorResponse := &ErrorResponse{}
+	errorResponse := mycsnode.ErrorResponse{}
 
 	request := &rest.Request{
 		Path: "/users",
 		Headers: rest.NV{
-			"X-Auth-Key": a.authIDKey,
+			"X-Auth-Key": a.AuthIDKey,
 		},
 	}
 	response := &rest.Response{
@@ -28,7 +29,7 @@ func (a *ApiClient) GetSpaceUsers() ([]*userspace.SpaceUser, error) {
 		Error: &errorResponse,
 	}
 
-	if err = a.restApiClient.NewRequest(request).DoGet(response); err != nil {
+	if err = a.RestApiClient.NewRequest(request).DoGet(response); err != nil {
 		logger.ErrorMessage(
 			"ApiClient.GetSpaceUsers(): HTTP error: %s", 
 			err.Error())
@@ -55,12 +56,12 @@ func (a *ApiClient) GetSpaceUser(userID string) (*userspace.SpaceUser, error) {
 	)
 
 	user := userspace.SpaceUser{}
-	errorResponse := ErrorResponse{}
+	errorResponse := mycsnode.ErrorResponse{}
 
 	request := &rest.Request{
 		Path: fmt.Sprintf("/user/%s", userID),
 		Headers: rest.NV{
-			"X-Auth-Key": a.authIDKey,
+			"X-Auth-Key": a.AuthIDKey,
 		},
 	}
 	response := &rest.Response{
@@ -68,7 +69,7 @@ func (a *ApiClient) GetSpaceUser(userID string) (*userspace.SpaceUser, error) {
 		Error: &errorResponse,
 	}
 
-	if err = a.restApiClient.NewRequest(request).DoGet(response); err != nil {
+	if err = a.RestApiClient.NewRequest(request).DoGet(response); err != nil {
 		logger.ErrorMessage(
 			"ApiClient.GetSpaceUser(): HTTP error: %s", 
 			err.Error())
@@ -100,12 +101,12 @@ func (a *ApiClient) UpdateSpaceUser(userID string, enableAdmin, enableSiteBlocki
 	}
 
 	user := userspace.SpaceUser{}
-	errorResponse := ErrorResponse{}
+	errorResponse := mycsnode.ErrorResponse{}
 
 	request := &rest.Request{
 		Path: fmt.Sprintf("/user/%s", userID),
 		Headers: rest.NV{
-			"X-Auth-Key": a.authIDKey,
+			"X-Auth-Key": a.AuthIDKey,
 		},
 		Body: &requestBody{ 
 			IsSpaceAdmin: enableAdmin,
@@ -117,7 +118,7 @@ func (a *ApiClient) UpdateSpaceUser(userID string, enableAdmin, enableSiteBlocki
 		Error: &errorResponse,
 	}
 
-	if err = a.restApiClient.NewRequest(request).DoPut(response); err != nil {
+	if err = a.RestApiClient.NewRequest(request).DoPut(response); err != nil {
 		logger.ErrorMessage(
 			"ApiClient.UpdateSpaceUser(): HTTP error: %s", 
 			err.Error())
@@ -144,12 +145,12 @@ func (a *ApiClient) GetUserDevice(userID, deviceID string) (*userspace.Device, e
 	)
 
 	device := userspace.Device{}
-	errorResponse := ErrorResponse{}
+	errorResponse := mycsnode.ErrorResponse{}
 
 	request := &rest.Request{
 		Path: fmt.Sprintf("/user/%s/device/%s", userID, deviceID),
 		Headers: rest.NV{
-			"X-Auth-Key": a.authIDKey,
+			"X-Auth-Key": a.AuthIDKey,
 		},
 	}
 	response := &rest.Response{
@@ -157,7 +158,7 @@ func (a *ApiClient) GetUserDevice(userID, deviceID string) (*userspace.Device, e
 		Error: &errorResponse,
 	}
 
-	if err = a.restApiClient.NewRequest(request).DoGet(response); err != nil {
+	if err = a.RestApiClient.NewRequest(request).DoGet(response); err != nil {
 		logger.ErrorMessage(
 			"ApiClient.GetUserDevice(): HTTP error: %s", 
 			err.Error())
@@ -188,12 +189,12 @@ func (a *ApiClient) EnableUserDevice(userID, deviceID string, enabled bool) (*us
 	}
 
 	device := userspace.Device{}
-	errorResponse := ErrorResponse{}
+	errorResponse := mycsnode.ErrorResponse{}
 
 	request := &rest.Request{
 		Path: fmt.Sprintf("/user/%s/device/%s", userID, deviceID),
 		Headers: rest.NV{
-			"X-Auth-Key": a.authIDKey,
+			"X-Auth-Key": a.AuthIDKey,
 		},
 		Body: &requestBody{ Enabled: enabled },
 	}
@@ -202,7 +203,7 @@ func (a *ApiClient) EnableUserDevice(userID, deviceID string, enabled bool) (*us
 		Error: &errorResponse,
 	}
 
-	if err = a.restApiClient.NewRequest(request).DoPut(response); err != nil {
+	if err = a.RestApiClient.NewRequest(request).DoPut(response); err != nil {
 		logger.ErrorMessage(
 			"ApiClient.EnableUserDevice():  HTTP error: %s", 
 			err.Error())

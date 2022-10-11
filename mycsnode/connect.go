@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/appbricks/cloud-builder/auth"
+	"github.com/appbricks/mycloudspace-common/mycsnode"
 	"github.com/appbricks/mycloudspace-common/vpn"
 	"github.com/mevansam/goutils/logger"
 	"github.com/mevansam/goutils/rest"
@@ -34,17 +35,17 @@ func (a *ApiClient) CreateConnectConfig(
 	}
 	
 	config := vpn.ServiceConfig{}
-	if config.PrivateKey, config.PublicKey, err = a.node.CreateDeviceConnectKeyPair(); err != nil {
+	if config.PrivateKey, config.PublicKey, err = a.Node.CreateDeviceConnectKeyPair(); err != nil {
 		return nil, err
 	}
-	config.IsAdminUser = auth.NewRoleMask(auth.Admin).LoggedInUserHasRole(a.deviceContext, a.node)
+	config.IsAdminUser = auth.NewRoleMask(auth.Admin).LoggedInUserHasRole(a.deviceContext, a.Node)
 
-	errorResponse := ErrorResponse{}
+	errorResponse := mycsnode.ErrorResponse{}
 
 	request := &rest.Request{
 		Path: "/connect",
 		Headers: rest.NV{
-			"X-Auth-Key": a.authIDKey,
+			"X-Auth-Key": a.AuthIDKey,
 		},
 		Body: &requestBody{ 
 			DeviceConnectKey: config.PublicKey,
@@ -59,7 +60,7 @@ func (a *ApiClient) CreateConnectConfig(
 		Error: &errorResponse,
 	}
 
-	if err = a.restApiClient.NewRequest(request).DoPost(response); err != nil {
+	if err = a.RestApiClient.NewRequest(request).DoPost(response); err != nil {
 		logger.ErrorMessage(
 			"ApiClient.Connect(): HTTP error: %s", 
 			err.Error())
@@ -86,12 +87,12 @@ func (a *ApiClient) DeleteConnectConfig() error {
 		err error
 	)
 
-	errorResponse := ErrorResponse{}
+	errorResponse := mycsnode.ErrorResponse{}
 
 	request := &rest.Request{
 		Path: "/connect",
 		Headers: rest.NV{
-			"X-Auth-Key": a.authIDKey,
+			"X-Auth-Key": a.AuthIDKey,
 		},
 	}
 	response := &rest.Response{
@@ -99,7 +100,7 @@ func (a *ApiClient) DeleteConnectConfig() error {
 		Error: &errorResponse,
 	}
 
-	if err = a.restApiClient.NewRequest(request).DoDelete(response); err != nil {
+	if err = a.RestApiClient.NewRequest(request).DoDelete(response); err != nil {
 		logger.ErrorMessage(
 			"ApiClient.DeleteConnectConfig(): HTTP error: %s", 
 			err.Error())
