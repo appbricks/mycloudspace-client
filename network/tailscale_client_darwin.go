@@ -71,6 +71,10 @@ func __configureExitNode(
 		logger.ErrorMessage("TailscaleClient.Connect(): Unable to ping exit node: %s", err.Error())
 		return err
 	}
+	// disable ipv6 on default device connected to the network
+	if err = tsc.nc.DisableIPv6(); err != nil {
+		return err
+	}
 	// configure static egress routes for the tunnel
 	if routeManager, err = tsc.nc.NewRouteManager(); err != nil {
 		return err
