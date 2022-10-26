@@ -6,18 +6,17 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/netip"
 	"os"
 	"time"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
-	"inet.af/netaddr"
-	"tailscale.com/control/controlclient"
+	"tailscale.com/control/controlbase"
 	"tailscale.com/ipn/ipnlocal"
 	"tailscale.com/paths"
 	"tailscale.com/wgengine/router"
 
 	"github.com/appbricks/mycloudspace-client/mycscloud"
-	"github.com/appbricks/mycloudspace-client/mycsnode"
 	"github.com/mevansam/goutils/logger"
 	"github.com/mevansam/goutils/utils"
 
@@ -30,9 +29,6 @@ type TailscaleDaemon struct {
 
 	// MyCS space nodes providing control services
 	spaceNodes *mycscloud.SpaceNodes
-
-	// control node api client
-	apiClient *mycsnode.ApiClient
 
 	// bytes sent and received through the tunnel
 	sent, recd *monitors.Counter
@@ -88,9 +84,9 @@ func NewTailscaleDaemon(
 	}
 	
 	// Set MyCS Hooks
-	controlclient.MyCSNodeControlService = tsd
-	ipnlocal.MyCSNodeControlService = tsd
-	router.MyCSNodeControlService = tsd
+	controlbase.MyCSHook = tsd
+	ipnlocal.MyCSHook = tsd
+	router.MyCSHook = tsd
 
 	return tsd
 }
@@ -103,9 +99,7 @@ func (tsd *TailscaleDaemon) CacheDNSNames(dnsNames []string) ([]string, error) {
 		ip          net.IP
 		resolvedIPs []net.IP
 
-		ipNet  *net.IPNet
-		ipAddr netaddr.IPPrefix
-		ok     bool
+		ipAddr netip.Prefix
 	)
 	cachedIPs := []string{}
 
@@ -116,22 +110,16 @@ func (tsd *TailscaleDaemon) CacheDNSNames(dnsNames []string) ([]string, error) {
 		}
 		mapping := ipnlocal.MyCSDNSMapping{
 			Name: name,
-			Addrs: make([]netaddr.IPPrefix, 0, len(resolvedIPs)),
+			Addrs: make([]netip.Prefix, 0, len(resolvedIPs)),
 		}
 
 		for _, ip = range resolvedIPs {
 
 			addr := ip.String()
-			if _, ipNet, err = net.ParseCIDR(addr + "/32"); err != nil {
+			if ipAddr, err = netip.ParsePrefix(addr + "/32"); err != nil {
 				return nil, err
 			}
 
-			if ipAddr, ok = netaddr.FromStdIPNet(ipNet); !ok {
-				return nil, fmt.Errorf(
-					"unable to convert standard ip net '%s' to netaddr ip prefix: %s", 
-					ipNet.String(), err.Error(),
-				)
-			}
 			mapping.Addrs = append(mapping.Addrs, ipAddr)
 			cachedIPs = append(cachedIPs, ip.String())
 		}
@@ -161,9 +149,6 @@ func (tsd *TailscaleDaemon) Start() error {
 func (tsd *TailscaleDaemon) Stop() {
 	if tsd.metricsTimer != nil {
 		_ = tsd.metricsTimer.Stop()
-	}
-	if tsd.apiClient != nil {
-		tsd.spaceNodes.ReleaseApiClientForSpace(tsd.apiClient)
 	}
 	tsd.TailscaleDaemon.Stop()
 }
@@ -232,11 +217,11 @@ func (tsd *TailscaleDaemon) Write(p []byte) (n int, err error) {
 // MyCS Hooks
 
 // hook in - tailscale.com/control/controlclient/direct.go
-func (tsd *TailscaleDaemon) ConfigureHTTPClient(url string, httpClient *http.Client) error {
+func (tsd *TailscaleDaemon) ConfigureHTTPTransport(url string, tr *http.Transport) error {
 
 	var (
 		err error
-
+		
 		certPool *x509.CertPool
 	)
 
@@ -246,8 +231,6 @@ func (tsd *TailscaleDaemon) ConfigureHTTPClient(url string, httpClient *http.Cli
 			"TailscaleDaemon.ConfigureHTTPClient(): Authorizing access to space: %s", 
 			space.Key())
 
-		htTrasport := httpClient.Transport.(*http.Transport)
-		
 		// add locally signed ca root of space node
 		// to the control client http transport's 
 		// certificate pool
@@ -261,19 +244,15 @@ func (tsd *TailscaleDaemon) ConfigureHTTPClient(url string, httpClient *http.Cli
 				certPool = x509.NewCertPool()
 			}
 			certPool.AppendCertsFromPEM([]byte(localCARoot))
-			htTrasport.TLSClientConfig.RootCAs = certPool
-			htTrasport.TLSClientConfig.InsecureSkipVerify = false
-			htTrasport.TLSClientConfig.VerifyConnection = nil
+			tr.TLSClientConfig.RootCAs = certPool
+			tr.TLSClientConfig.InsecureSkipVerify = false
+			tr.TLSClientConfig.VerifyConnection = nil
 
 		} else {
-			htTrasport.TLSClientConfig.InsecureSkipVerify = true
-			htTrasport.TLSClientConfig.VerifyConnection = nil
+			tr.TLSClientConfig.InsecureSkipVerify = true
+			tr.TLSClientConfig.VerifyConnection = nil
 		}
 
-		// create node api client and start background auth
-		if tsd.apiClient, err = tsd.spaceNodes.GetApiClientForSpace(space); err != nil {
-			return err
-		}
 		return nil
 
 	} else {
@@ -288,7 +267,7 @@ func (tsd *TailscaleDaemon) ResolvedDNSNames() []ipnlocal.MyCSDNSMapping {
 }
 
 // hook in - tailscale.com/wgengine/router/router_userspace_bsd.go
-func (tsd *TailscaleDaemon) ExcludeRoute(pfx netaddr.IPPrefix) bool {
+func (tsd *TailscaleDaemon) ExcludeRoute(pfx netip.Prefix) bool {
 
 	var (
 		exclude, ok bool

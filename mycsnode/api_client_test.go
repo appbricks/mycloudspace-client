@@ -45,7 +45,7 @@ var _ = Describe("MyCS Node API Client", func() {
 
 			handler = mockNodeService.NewServiceHandler()
 			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/authDevice").
+				ExpectPath("/mycs/authDevice").
 				WithCallbackTest(handler.SendAuthResponse)
 
 			_, err := apiClient.Authenticate()
@@ -56,7 +56,7 @@ var _ = Describe("MyCS Node API Client", func() {
 		It("Call the api to get the list of active users for the target", func() {
 			
 			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/users").
+				ExpectPath("/mycs/users").
 				ExpectMethod("GET").
 				WithCallbackTest(utils_mocks.HandleAuthHeaders(apiClient, "", usersSuccessResponse))
 
@@ -75,7 +75,7 @@ var _ = Describe("MyCS Node API Client", func() {
 		It("Call the api to get a user activated for the target", func() {
 
 			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/user/d40db93c-ad98-4177-93e5-1cfe9da7b000").
+				ExpectPath("/mycs/user/d40db93c-ad98-4177-93e5-1cfe9da7b000").
 				ExpectMethod("GET").
 				RespondWithError(authErrorResponse, 400)
 
@@ -85,7 +85,7 @@ var _ = Describe("MyCS Node API Client", func() {
 			Expect(mockNodeService.TestServer.Done()).To(BeTrue())
 
 			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/user/d40db93c-ad98-4177-93e5-1cfe9da7b000").
+				ExpectPath("/mycs/user/d40db93c-ad98-4177-93e5-1cfe9da7b000").
 				ExpectMethod("GET").
 				WithCallbackTest(utils_mocks.HandleAuthHeaders(apiClient, "", userSuccessResponse))
 
@@ -102,7 +102,7 @@ var _ = Describe("MyCS Node API Client", func() {
 		It("Call the api to update a users space configuration", func() {
 
 			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/user/d40db93c-ad98-4177-93e5-1cfe9da7b000").
+				ExpectPath("/mycs/user/d40db93c-ad98-4177-93e5-1cfe9da7b000").
 				ExpectMethod("PUT").
 				RespondWithError(authErrorResponse, 400)
 
@@ -112,7 +112,7 @@ var _ = Describe("MyCS Node API Client", func() {
 			Expect(mockNodeService.TestServer.Done()).To(BeTrue())
 
 			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/user/d40db93c-ad98-4177-93e5-1cfe9da7b000").
+				ExpectPath("/mycs/user/d40db93c-ad98-4177-93e5-1cfe9da7b000").
 				ExpectMethod("PUT").
 				WithCallbackTest(utils_mocks.HandleAuthHeaders(apiClient, updateUserSuccessResquest, updateUserSuccessResponse))
 
@@ -129,7 +129,7 @@ var _ = Describe("MyCS Node API Client", func() {
 		It("Call the api to get a user device activated for the target", func() {
 
 			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/user/d40db93c-ad98-4177-93e5-1cfe9da7b000/device/d22da788-a6a0-4450-8ca3-276b46db34c3").
+				ExpectPath("/mycs/user/d40db93c-ad98-4177-93e5-1cfe9da7b000/device/d22da788-a6a0-4450-8ca3-276b46db34c3").
 				ExpectMethod("GET").
 				RespondWithError(authErrorResponse, 400)
 
@@ -139,7 +139,7 @@ var _ = Describe("MyCS Node API Client", func() {
 			Expect(mockNodeService.TestServer.Done()).To(BeTrue())
 
 			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/user/d40db93c-ad98-4177-93e5-1cfe9da7b000/device/d22da788-a6a0-4450-8ca3-276b46db34c3").
+				ExpectPath("/mycs/user/d40db93c-ad98-4177-93e5-1cfe9da7b000/device/d22da788-a6a0-4450-8ca3-276b46db34c3").
 				ExpectMethod("GET").
 				WithCallbackTest(utils_mocks.HandleAuthHeaders(apiClient, "", userDeviceSuccessResponse))
 
@@ -154,7 +154,7 @@ var _ = Describe("MyCS Node API Client", func() {
 		It("Call the api to enable a user device's access to the target", func() {
 
 			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/user/d40db93c-ad98-4177-93e5-1cfe9da7b000/device/d22da788-a6a0-4450-8ca3-276b46db34c3").
+				ExpectPath("/mycs/user/d40db93c-ad98-4177-93e5-1cfe9da7b000/device/d22da788-a6a0-4450-8ca3-276b46db34c3").
 				ExpectMethod("PUT").
 				RespondWithError(authErrorResponse, 400)
 
@@ -164,7 +164,7 @@ var _ = Describe("MyCS Node API Client", func() {
 			Expect(mockNodeService.TestServer.Done()).To(BeTrue())
 
 			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/user/d40db93c-ad98-4177-93e5-1cfe9da7b000/device/d22da788-a6a0-4450-8ca3-276b46db34c3").
+				ExpectPath("/mycs/user/d40db93c-ad98-4177-93e5-1cfe9da7b000/device/d22da788-a6a0-4450-8ca3-276b46db34c3").
 				ExpectMethod("PUT").
 				WithCallbackTest(utils_mocks.HandleAuthHeaders(apiClient, enableUserDeviceRequest, enableUserDeviceSuccessResponse))
 
@@ -182,7 +182,7 @@ var _ = Describe("MyCS Node API Client", func() {
 			var publicKeyInRequest interface{}
 
 			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/connect").
+				ExpectPath("/mycs/connect").
 				ExpectMethod("POST").
 				WithCallbackTest(
 					utils_mocks.HandleAuthHeaders(
@@ -211,7 +211,7 @@ var _ = Describe("MyCS Node API Client", func() {
 			Expect(config.RawConfig).NotTo(BeNil())
 
 			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/connect").
+				ExpectPath("/mycs/connect").
 				ExpectMethod("DELETE").
 				WithCallbackTest(
 					utils_mocks.HandleAuthHeaders(apiClient, "", "{}"),
@@ -226,7 +226,7 @@ var _ = Describe("MyCS Node API Client", func() {
 		It("Call the api create a mesh auth key", func() {
 
 			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/meshDeviceAuthKey").
+				ExpectPath("/mycs/meshDeviceAuthKey").
 				ExpectMethod("POST").
 				WithCallbackTest(utils_mocks.HandleAuthHeaders(apiClient, createMesgAuthKeyRequest, createMesgAuthKeyResponse))
 

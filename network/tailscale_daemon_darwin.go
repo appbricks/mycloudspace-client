@@ -4,9 +4,11 @@
 package network
 
 import (
+	"net/netip"
+
 	"github.com/mevansam/goutils/logger"
 	"github.com/mevansam/goutils/network"
-	"inet.af/netaddr"
+	"go4.org/netipx"
 	"tailscale.com/net/interfaces"
 )
 
@@ -16,8 +18,8 @@ func __getTSRoutesToExclude() map[string]bool {
 		err error
 
 		ifaceList    interfaces.List
-		ipsetBuilder netaddr.IPSetBuilder
-		ipset        *netaddr.IPSet
+		ipsetBuilder netipx.IPSetBuilder
+		ipset        *netipx.IPSet
 	)
 
 	tsRoutesToExclude := map[string]bool{
@@ -37,7 +39,7 @@ func __getTSRoutesToExclude() map[string]bool {
 		return tsRoutesToExclude
 	}
 	defaultIface := network.NewNetworkContext().DefaultInterface()
-	if err = ifaceList.ForeachInterfaceAddress(func(iface interfaces.Interface, pfx netaddr.IPPrefix) {
+	if err = ifaceList.ForeachInterfaceAddress(func(iface interfaces.Interface, pfx netip.Prefix) {
 		if iface.Name == defaultIface {
 			ipsetBuilder.AddPrefix(pfx)
 		}

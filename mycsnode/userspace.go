@@ -19,7 +19,7 @@ func (a *ApiClient) GetSpaceUsers() ([]*userspace.SpaceUser, error) {
 	errorResponse := mycsnode.ErrorResponse{}
 
 	request := &rest.Request{
-		Path: "/users",
+		Path: "/mycs/users",
 		Headers: rest.NV{
 			"X-Auth-Key": a.AuthIDKey,
 		},
@@ -59,7 +59,7 @@ func (a *ApiClient) GetSpaceUser(userID string) (*userspace.SpaceUser, error) {
 	errorResponse := mycsnode.ErrorResponse{}
 
 	request := &rest.Request{
-		Path: fmt.Sprintf("/user/%s", userID),
+		Path: fmt.Sprintf("/mycs/user/%s", userID),
 		Headers: rest.NV{
 			"X-Auth-Key": a.AuthIDKey,
 		},
@@ -104,7 +104,7 @@ func (a *ApiClient) UpdateSpaceUser(userID string, enableAdmin, enableSiteBlocki
 	errorResponse := mycsnode.ErrorResponse{}
 
 	request := &rest.Request{
-		Path: fmt.Sprintf("/user/%s", userID),
+		Path: fmt.Sprintf("/mycs/user/%s", userID),
 		Headers: rest.NV{
 			"X-Auth-Key": a.AuthIDKey,
 		},
@@ -148,7 +148,7 @@ func (a *ApiClient) GetUserDevice(userID, deviceID string) (*userspace.Device, e
 	errorResponse := mycsnode.ErrorResponse{}
 
 	request := &rest.Request{
-		Path: fmt.Sprintf("/user/%s/device/%s", userID, deviceID),
+		Path: fmt.Sprintf("/mycs/user/%s/device/%s", userID, deviceID),
 		Headers: rest.NV{
 			"X-Auth-Key": a.AuthIDKey,
 		},
@@ -192,7 +192,7 @@ func (a *ApiClient) EnableUserDevice(userID, deviceID string, enabled bool) (*us
 	errorResponse := mycsnode.ErrorResponse{}
 
 	request := &rest.Request{
-		Path: fmt.Sprintf("/user/%s/device/%s", userID, deviceID),
+		Path: fmt.Sprintf("/mycs/user/%s/device/%s", userID, deviceID),
 		Headers: rest.NV{
 			"X-Auth-Key": a.AuthIDKey,
 		},

@@ -43,7 +43,7 @@ func (a *ApiClient) CreateConnectConfig(
 	errorResponse := mycsnode.ErrorResponse{}
 
 	request := &rest.Request{
-		Path: "/connect",
+		Path: "/mycs/connect",
 		Headers: rest.NV{
 			"X-Auth-Key": a.AuthIDKey,
 		},
@@ -90,7 +90,7 @@ func (a *ApiClient) DeleteConnectConfig() error {
 	errorResponse := mycsnode.ErrorResponse{}
 
 	request := &rest.Request{
-		Path: "/connect",
+		Path: "/mycs/connect",
 		Headers: rest.NV{
 			"X-Auth-Key": a.AuthIDKey,
 		},
