@@ -12,7 +12,6 @@ import (
 	"github.com/appbricks/mycloudspace-client/mycscloud"
 	"github.com/appbricks/mycloudspace-client/mycsnode"
 	mycsnode_common "github.com/appbricks/mycloudspace-common/mycsnode"
-	"github.com/go-ping/ping"
 	"github.com/mevansam/goutils/logger"
 	"github.com/mevansam/goutils/network"
 )
@@ -39,7 +38,6 @@ var connStatusMsgs = []string{
 
 var configureDNS = func(tsc *TailscaleClient, nameServers []string) error { return nil }
 var configureExitNode = func(tsc *TailscaleClient, exitNode *mycsnode_common.TSNode) error { return nil }
-var waitForExitNode = false
 
 type TailscaleClient struct {
 	ctx    context.Context
@@ -56,7 +54,6 @@ type TailscaleClient struct {
 	splitDestinationIPs []string
 
 	waitForExitNode bool
-	exitNodePinger  *ping.Pinger
 	
 	connState ConnectState
 }
@@ -127,9 +124,15 @@ func (tsc *TailscaleClient) Connect(
 	}
 	if egressViaSpace {
 		if space.CanUseAsEgressNode() {
-			tsc.waitForExitNode = waitForExitNode
 			exitNode = &connectInfo.SpaceNode
 			upArgs["exitNodeIP"] = exitNode.IP
+
+			// when this fn exists the exit node
+			// is ready of an error occurred
+			tsc.waitForExitNode = true
+			defer func() {
+				tsc.waitForExitNode = false
+			}()
 
 		} else {
 			return fmt.Errorf(
@@ -152,6 +155,11 @@ func (tsc *TailscaleClient) Connect(
 		}
 	}
 	if exitNode != nil {
+		// ensure exit node is reachable by pinging it. if ping 
+		// does not get a pong within 30s timeout then error out
+		if err = cli.RunPing(tsc.ctx, exitNode.Name, exitNode.IP, 30); err != nil {
+			return err
+		}
 		if err = configureExitNode(tsc, exitNode); err != nil {
 			return err
 		}
@@ -166,9 +174,6 @@ func (tsc *TailscaleClient) Disconnect() error {
 	)
 
 	tsc.cancel()
-	if tsc.waitForExitNode && tsc.exitNodePinger != nil {
-		tsc.exitNodePinger.Stop()
-	}
 	if tsc.apiClient != nil {
 		tsc.spaceNodes.ReleaseApiClientForSpace(tsc.apiClient)
 	}

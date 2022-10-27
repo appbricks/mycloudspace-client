@@ -20,7 +20,6 @@ require (
 	github.com/appbricks/cloud-builder v0.0.0-00010101000000-000000000000
 	github.com/appbricks/mycloudspace-common v0.0.0-00010101000000-000000000000
 	github.com/cloudevents/sdk-go/v2 v2.8.0
-	github.com/go-ping/ping v0.0.0-20211130115550-779d1e919534
 	github.com/hasura/go-graphql-client v0.6.3
 	github.com/lestrrat-go/jwx v1.2.19
 	github.com/mevansam/goforms v0.0.0-00010101000000-000000000000
