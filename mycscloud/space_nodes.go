@@ -99,7 +99,7 @@ func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) error
 			// all local targets should have unique keys
 			sn.spaceNodes[t.Key()] = []userspace.SpaceNode{t}
 			// add target if it has a valid endpoint
-			if err = t.LoadRemoteRefs(); err == nil {
+			if t.Error() == nil {
 				if endpoint, err = t.GetEndpoint(); err == nil {
 					sn.spaceNodeByEndpoint[endpoint] = t
 				}	
