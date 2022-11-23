@@ -7,6 +7,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"net/url"
 	"os"
 	"time"
 
@@ -56,7 +57,12 @@ func NewTailscaleDaemon(
 ) *TailscaleDaemon {
 
 	var (
+		err error
+
 		socketPath string
+
+		spaceEndpoint string
+		spaceURL      *url.URL
 	)
 	
 	// remove stale config socket if found (*nix systems only)
@@ -82,6 +88,17 @@ func NewTailscaleDaemon(
 		monitor.AddCounter(tsd.sent)
 		monitor.AddCounter(tsd.recd)
 	}
+
+	// add all known space node endpoints to dns cache
+	for _, sn := range spaceNodes.GetAllSpaces() {
+		if spaceEndpoint, err = sn.GetEndpoint(); err == nil {
+			if spaceURL, err = url.Parse(spaceEndpoint); err == nil {
+				if net.ParseIP(spaceURL.Host) == nil {
+					_, _ = tsd.cacheDNSName(spaceURL.Host)
+				}
+			}
+		}
+	}
 	
 	// Set MyCS Hooks
 	controlbase.MyCSHook = tsd
@@ -95,37 +112,54 @@ func (tsd *TailscaleDaemon) CacheDNSNames(dnsNames []string) ([]string, error) {
 
 	var (
 		err error
+		ips []string
+	)
+	cachedIPs := []string{}
+
+	for _, name := range dnsNames {		
+		if ips, err = tsd.cacheDNSName(name); err != nil {
+			return nil, err
+		}
+		cachedIPs = append(cachedIPs, ips...)
+	}
+
+	return cachedIPs, nil
+}
+
+func (tsd *TailscaleDaemon) cacheDNSName(name string) ([]string, error) {
+
+	var (
+		err error
 
 		ip          net.IP
 		resolvedIPs []net.IP
 
 		ipAddr netip.Prefix
 	)
-	cachedIPs := []string{}
 
-	for _, name := range dnsNames {
+	nameIPs := []string{}
 
-		if resolvedIPs, err = net.LookupIP(name); err != nil {
+	if resolvedIPs, err = net.LookupIP(name); err != nil {
+		return nil, err
+	}
+	mapping := ipnlocal.MyCSDNSMapping{
+		Name: name,
+		Addrs: make([]netip.Prefix, 0, len(resolvedIPs)),
+	}
+
+	for _, ip = range resolvedIPs {
+
+		addr := ip.String()
+		if ipAddr, err = netip.ParsePrefix(addr + "/32"); err != nil {
 			return nil, err
 		}
-		mapping := ipnlocal.MyCSDNSMapping{
-			Name: name,
-			Addrs: make([]netip.Prefix, 0, len(resolvedIPs)),
-		}
 
-		for _, ip = range resolvedIPs {
-
-			addr := ip.String()
-			if ipAddr, err = netip.ParsePrefix(addr + "/32"); err != nil {
-				return nil, err
-			}
-
-			mapping.Addrs = append(mapping.Addrs, ipAddr)
-			cachedIPs = append(cachedIPs, ip.String())
-		}
-		tsd.cachedDNSMappings = append(tsd.cachedDNSMappings, mapping)
+		mapping.Addrs = append(mapping.Addrs, ipAddr)
+		nameIPs = append(nameIPs, ip.String())
 	}
-	return cachedIPs, nil
+	tsd.cachedDNSMappings = append(tsd.cachedDNSMappings, mapping)
+
+	return nameIPs, nil
 }
 
 func (tsd *TailscaleDaemon) Start() error {
