@@ -25,6 +25,10 @@ type SpaceNodes struct {
 	// remote space targets
 	sharedSpaces []*userspace.Space
 
+	// synchronizes async call to get spaces
+	asyncCall      sync.WaitGroup
+	asyncCallError error
+
 	// space API clients
 	spaceAPIClients map[string]*apiClientInstance
 	apiClientSync   sync.Mutex
@@ -65,10 +69,15 @@ func GetSpaceNodes(config config.Config, apiUrl string) (*SpaceNodes, error) {
 
 		spaceAPIClients: make(map[string]*apiClientInstance),
 	}
-	spaceAPI := NewSpaceAPI(api.NewGraphQLClient(apiUrl, "", config))
-	if sn.sharedSpaces, err = spaceAPI.GetSpaces(); err != nil {
-		return nil, err
-	}		
+
+	sn.asyncCall.Add(1)
+	go func() {
+		defer sn.asyncCall.Done()
+
+		spaceAPI := NewSpaceAPI(api.NewGraphQLClient(apiUrl, "", config))
+		sn.sharedSpaces, sn.asyncCallError = spaceAPI.GetSpaces()
+	}()
+
 	if err = sn.consolidateRemoteAndLocalNodes(config); err != nil {
 		return nil, err
 	}
@@ -107,6 +116,12 @@ func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) error
 				logger.DebugMessage("SpaceNodes.consolidateRemoteAndLocalNodes(): Failed to load remote state for target: %s", t.Key())
 			}
 		}
+	}
+
+	// wait for shared spaces to be retrieved
+	sn.asyncCall.Wait()
+	if sn.asyncCallError != nil {
+		return sn.asyncCallError
 	}
 
 	j := len(sn.sharedSpaces) - 1
