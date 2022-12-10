@@ -31,7 +31,7 @@ func NewMockConfig(sourceDirPath string) (config.Config, error) {
 
 	tgtCtx := cb_mocks.NewTargetMockContext(testRecipePath)
 
-	if tgt, err = tgtCtx.NewTarget("basic", "aws"); err != nil {
+	if tgt, err = tgtCtx.NewTarget("test:basic", "aws"); err != nil {
 		return nil, err
 	}
 	if inputForm, err = tgt.Recipe.InputForm(); err != nil {
@@ -53,7 +53,7 @@ func NewMockConfig(sourceDirPath string) (config.Config, error) {
 	tgt.RSAPublicKey = "PubKey1"
 	tgtCtx.SaveTarget("", tgt)
 
-	if tgt, err = tgtCtx.NewTarget("basic", "aws"); err != nil {
+	if tgt, err = tgtCtx.NewTarget("test:basic", "aws"); err != nil {
 		return nil, err
 	}
 	if inputForm, err = tgt.Recipe.InputForm(); err != nil {
@@ -75,7 +75,7 @@ func NewMockConfig(sourceDirPath string) (config.Config, error) {
 	tgt.RSAPublicKey = "PubKey2"
 	tgtCtx.SaveTarget("", tgt)
 
-	if tgt, err = tgtCtx.NewTarget("basic", "aws"); err != nil {
+	if tgt, err = tgtCtx.NewTarget("test:basic", "aws"); err != nil {
 		return nil, err
 	}
 	if inputForm, err = tgt.Recipe.InputForm(); err != nil {
@@ -96,7 +96,7 @@ func NewMockConfig(sourceDirPath string) (config.Config, error) {
 	tgt.RSAPublicKey = "PubKey3"
 	tgtCtx.SaveTarget("", tgt)
 
-	if tgt, err = tgtCtx.NewTarget("simple", "aws"); err != nil {
+	if tgt, err = tgtCtx.NewTarget("test:simple", "aws"); err != nil {
 		return nil, err
 	}
 	if inputForm, err = tgt.Recipe.InputForm(); err != nil {

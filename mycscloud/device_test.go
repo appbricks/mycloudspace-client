@@ -1,6 +1,9 @@
 package mycscloud_test
 
 import (
+	"fmt"
+	"sync/atomic"
+
 	"golang.org/x/oauth2"
 
 	"github.com/appbricks/cloud-builder/config"
@@ -19,11 +22,10 @@ var _ = Describe("Device API", func() {
 	var (
 		err error
 
-		cfg        config.Config
-		testServer *test_server.MockHttpServer
-
-		deviceAPI *mycscloud.DeviceAPI
+		cfg config.Config
 	)
+
+	counter := atomic.Int32{}
 
 	BeforeEach(func() {
 
@@ -38,22 +40,26 @@ var _ = Describe("Device API", func() {
 			),
 		)
 		cfg = mocks.NewMockConfig(authContext, config.NewDeviceContext(), nil)
+	})
+
+	startMockNodeService := func() (*test_server.MockHttpServer, *mycscloud.DeviceAPI) {
 
 		// start test server
-		testServer = test_server.NewMockHttpServer(9096)
+		port := int(counter.Add(1)) + 9090
+		testServer := test_server.NewMockHttpServer(port)
 		testServer.ExpectCommonHeader("Authorization", "mock authorization token")		
 		testServer.Start()
 
 		// Device API client
-		deviceAPI = mycscloud.NewDeviceAPI(api.NewGraphQLClient("http://localhost:9096/", "", cfg))
+		deviceAPI := mycscloud.NewDeviceAPI(api.NewGraphQLClient(fmt.Sprintf("http://localhost:%d/", port), "", cfg))
 		// deviceAPI = mycscloud.NewDeviceAPI(api.NewGraphQLClient("https://ss3hvtbnzrasfbevhaoa4mlaiu.appsync-api.us-east-1.amazonaws.com/graphql", "", cfg))
-	})
 
-	AfterEach(func() {		
-		testServer.Stop()
-	})	
+		return testServer, deviceAPI
+	}
 
 	It("gets device information", func() {
+		testServer, deviceAPI := startMockNodeService()
+		defer testServer.Stop()
 
 		deviceContext := cfg.DeviceContext()
 		err = deviceAPI.UpdateDeviceContext(deviceContext)
@@ -135,6 +141,8 @@ var _ = Describe("Device API", func() {
 	})
 
 	It("registers a device", func() {
+		testServer, deviceAPI := startMockNodeService()
+		defer testServer.Stop()
 
 		var (
 			idKey, deviceID string
@@ -159,6 +167,8 @@ var _ = Describe("Device API", func() {
 	})
 
 	It("unregisters a device", func() {
+		testServer, deviceAPI := startMockNodeService()
+		defer testServer.Stop()
 
 		var (
 			userIDs []string
@@ -184,6 +194,8 @@ var _ = Describe("Device API", func() {
 	})
 
 	It("adds a device user", func() {
+		testServer, deviceAPI := startMockNodeService()
+		defer testServer.Stop()
 
 		var (
 			deviceID, userID string
@@ -208,6 +220,8 @@ var _ = Describe("Device API", func() {
 	})
 
 	It("removes a device user", func() {
+		testServer, deviceAPI := startMockNodeService()
+		defer testServer.Stop()
 
 		var (
 			deviceID, userID string

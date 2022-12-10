@@ -33,11 +33,12 @@ func (s *SpaceAPI) AddSpace(
 					SpaceID graphql.String `graphql:"spaceID"`
 				}
 			}
-		} `graphql:"addSpace(spaceName: $spaceName, spaceKey: {publicKey: $spacePublicKey}, recipe: $recipe, iaas: $iaas, region: $region, isEgressNode: $isEgressNode)"`
+		} `graphql:"addSpace(spaceName: $spaceName, spaceKey: {publicKey: $spacePublicKey}, cookbook: $cookbook, recipe: $recipe, iaas: $iaas, region: $region, isEgressNode: $isEgressNode)"`
 	}
 	variables := map[string]interface{}{
 		"spaceName": graphql.String(tgt.DeploymentName()),
 		"spacePublicKey": graphql.String(tgt.RSAPublicKey),
+		"cookbook": graphql.String(tgt.CookbookName),
 		"recipe": graphql.String(tgt.RecipeName),
 		"iaas": graphql.String(tgt.RecipeIaas),
 		"region": graphql.String(*tgt.Provider.Region()),
@@ -86,6 +87,7 @@ func (s *SpaceAPI) GetSpaces() ([]*userspace.Space, error) {
 						SpaceID      graphql.String `graphql:"spaceID"`
 						SpaceName    graphql.String
 						PublicKey    graphql.String
+						Cookbook     graphql.String
 						Recipe       graphql.String
 						Iaas         graphql.String
 						Region       graphql.String
@@ -119,7 +121,8 @@ func (s *SpaceAPI) GetSpaces() ([]*userspace.Space, error) {
 			spaces = append(spaces, &userspace.Space{
 				SpaceID:      string(spaceUser.Space.SpaceID),
 				SpaceName:    string(spaceUser.Space.SpaceName),
-				PublicKey:    string(spaceUser.Space.PublicKey),		
+				PublicKey:    string(spaceUser.Space.PublicKey),
+				Cookbook:     string(spaceUser.Space.Cookbook),
 				Recipe:       string(spaceUser.Space.Recipe),
 				IaaS:         string(spaceUser.Space.Iaas),
 				Region:       string(spaceUser.Space.Region),

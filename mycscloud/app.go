@@ -28,10 +28,12 @@ func (a *AppAPI) AddApp(
 	var mutation struct {
 		AddApp struct {
 			AppID graphql.String `graphql:"appID"`
-		} `graphql:"addApp(appName: $appName, recipe: $recipe, iaas: $iaas, region: $region, spaceID: $spaceID)"`
+		} `graphql:"addApp(appName: $appName, appKey: {publicKey: $appPublicKey}, cookbook: $cookbook, recipe: $recipe, iaas: $iaas, region: $region, spaceID: $spaceID)"`
 	}
 	variables := map[string]interface{}{
 		"appName": graphql.String(tgt.DeploymentName()),
+		"appPublicKey": graphql.String(tgt.RSAPublicKey),
+		"cookbook": graphql.String(tgt.CookbookName),
 		"recipe": graphql.String(tgt.RecipeName),
 		"iaas": graphql.String(tgt.RecipeIaas),
 		"region": graphql.String(*tgt.Provider.Region()),

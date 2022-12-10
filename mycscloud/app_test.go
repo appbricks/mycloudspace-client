@@ -36,10 +36,10 @@ var _ = Describe("App API", func() {
 		cfg, err = mycs_mocks.NewMockConfig(sourceDirPath)
 		Expect(err).NotTo(HaveOccurred())
 
-		spaceTgt, err = cfg.TargetContext().GetTarget("basic/aws/aa/cookbook")
+		spaceTgt, err = cfg.TargetContext().GetTarget("test:basic/aws/aa/cookbook")
 		Expect(err).ToNot(HaveOccurred())
 
-		tgt, err = cfg.TargetContext().GetTarget("simple/aws/test-simple-deployment/testsimple1")
+		tgt, err = cfg.TargetContext().GetTarget("test:simple/aws/test-simple-deployment/testsimple1")
 		Expect(err).ToNot(HaveOccurred())
 
 		// App API client
@@ -93,9 +93,11 @@ var _ = Describe("App API", func() {
 })
 
 const addAppRequest = `{
-	"query": "mutation ($appName:String!$iaas:String!$recipe:String!$region:String!$spaceID:ID!){addApp(appName: $appName, recipe: $recipe, iaas: $iaas, region: $region, spaceID: $spaceID){appID}}",
+	"query": "mutation ($appName:String!$appPublicKey:String!$cookbook:String!$iaas:String!$recipe:String!$region:String!$spaceID:ID!){addApp(appName: $appName, appKey: {publicKey: $appPublicKey}, cookbook: $cookbook, recipe: $recipe, iaas: $iaas, region: $region, spaceID: $spaceID){appID}}",
 	"variables": {
 		"appName": "test-simple-deployment",
+		"appPublicKey": "PubKey4",
+		"cookbook": "test",
 		"recipe": "simple",
 		"iaas": "aws",
 		"region": "us-west-2",
