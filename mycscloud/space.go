@@ -50,8 +50,8 @@ func (s *SpaceAPI) AddSpace(
 	}
 	logger.TraceMessage("SpaceAPI: addSpace mutation returned response: %# v", mutation)
 	
-	tgt.SpaceKey = string(mutation.AddSpace.IdKey)
-	tgt.SpaceID = string(mutation.AddSpace.SpaceUser.Space.SpaceID)
+	tgt.NodeKey = string(mutation.AddSpace.IdKey)
+	tgt.NodeID = string(mutation.AddSpace.SpaceUser.Space.SpaceID)
 
 	return nil
 }
@@ -62,7 +62,7 @@ func (s *SpaceAPI) DeleteSpace(tgt *target.Target) ([]string, error) {
 		DeleteSpace []string `graphql:"deleteSpace(spaceID: $spaceID)"`
 	}
 	variables := map[string]interface{}{
-		"spaceID": graphql.ID(tgt.SpaceID),
+		"spaceID": graphql.ID(tgt.NodeID),
 	}
 	if err := s.apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
 		logger.DebugMessage("SpaceAPI: deleteSpace mutation returned an error: %s", err.Error())

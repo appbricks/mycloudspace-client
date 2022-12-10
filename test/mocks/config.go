@@ -49,7 +49,7 @@ func NewMockConfig(sourceDirPath string) (config.Config, error) {
 	if err = inputForm.SetFieldValue("region", "us-east-1"); err != nil {
 		return nil, err
 	}
-	tgt.SpaceID = "1d812616-5955-4bc6-8b67-ec3f0f12a756"
+	tgt.NodeID = "1d812616-5955-4bc6-8b67-ec3f0f12a756"
 	tgt.RSAPublicKey = "PubKey1"
 	tgtCtx.SaveTarget("", tgt)
 
@@ -71,7 +71,7 @@ func NewMockConfig(sourceDirPath string) (config.Config, error) {
 	if err = inputForm.SetFieldValue("region", "us-east-1"); err != nil {
 		return nil, err
 	}
-	tgt.SpaceID = "1d2a49d7-330b-4beb-a102-33049869e472"
+	tgt.NodeID = "1d2a49d7-330b-4beb-a102-33049869e472"
 	tgt.RSAPublicKey = "PubKey2"
 	tgtCtx.SaveTarget("", tgt)
 
@@ -117,7 +117,7 @@ func NewMockConfig(sourceDirPath string) (config.Config, error) {
 	if err = inputForm.SetFieldValue("region", "us-west-2"); err != nil {
 		return nil, err
 	}
-	tgt.SpaceID = "126e0de1-d422-4200-9486-25b108d6cc8d"	
+	tgt.NodeID = "126e0de1-d422-4200-9486-25b108d6cc8d"	
 	tgt.RSAPublicKey = "PubKey4"
 	tgtCtx.SaveTarget("", tgt)
 

@@ -102,8 +102,8 @@ func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) error
 			// only recipes with a bastion instance is considered
 			// a space. TBD: this criteria should be revisited
 			
-			if (len(t.SpaceID) > 0) {
-				spaceTargets[t.SpaceID] = t
+			if (len(t.NodeID) > 0) {
+				spaceTargets[t.NodeID] = t
 			}
 			// all local targets should have unique keys
 			sn.spaceNodes[t.Key()] = []userspace.SpaceNode{t}

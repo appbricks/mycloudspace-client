@@ -48,8 +48,8 @@ func (a *AppAPI) AddApp(
 	}
 	logger.TraceMessage("AppAPI.AddApp(): addApp mutation returned response: %# v", mutation)
 
-	tgt.SpaceKey = string(mutation.AddApp.IdKey)
-	tgt.SpaceID = string(mutation.AddApp.App.AppID)
+	tgt.NodeKey = string(mutation.AddApp.IdKey)
+	tgt.NodeID = string(mutation.AddApp.App.AppID)
 	
 	return nil
 }
@@ -60,7 +60,7 @@ func (a *AppAPI) DeleteApp(tgt *target.Target) ([]string, error)  {
 		DeleteApp []string `graphql:"deleteApp(appID: $appID)"`
 	}
 	variables := map[string]interface{}{
-		"appID": graphql.ID(tgt.SpaceID),
+		"appID": graphql.ID(tgt.NodeID),
 	}
 	if err := a.apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
 		logger.ErrorMessage("AppAPI.DeleteApp(): deleteApp mutation returned an error: %s", err.Error())

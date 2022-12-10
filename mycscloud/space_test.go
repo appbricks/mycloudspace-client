@@ -63,8 +63,8 @@ var _ = Describe("Space API", func() {
 
 		err = spaceAPI.AddSpace(tgt, true)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(tgt.SpaceKey).To(Equal("test id key"))
-		Expect(tgt.SpaceID).To(Equal("new space id"))
+		Expect(tgt.NodeKey).To(Equal("test id key"))
+		Expect(tgt.NodeID).To(Equal("new space id"))
 
 		Expect(testServer.Done()).To(BeTrue())
 	})
@@ -75,7 +75,7 @@ var _ = Describe("Space API", func() {
 			userIDs []string
 		)
 
-		tgt.SpaceID = "a space id"
+		tgt.NodeID = "a space id"
 
 		testServer.PushRequest().
 			ExpectJSONRequest(deleteSpaceRequest).
