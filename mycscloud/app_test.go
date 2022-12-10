@@ -13,7 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = Describe("App API", func() {
+var _ = FDescribe("App API", func() {
 
 	var (
 		err error
@@ -93,7 +93,7 @@ var _ = Describe("App API", func() {
 })
 
 const addAppRequest = `{
-	"query": "mutation ($appName:String!$appPublicKey:String!$cookbook:String!$iaas:String!$recipe:String!$region:String!$spaceID:ID!){addApp(appName: $appName, appKey: {publicKey: $appPublicKey}, cookbook: $cookbook, recipe: $recipe, iaas: $iaas, region: $region, spaceID: $spaceID){appID}}",
+	"query": "mutation ($appName:String!$appPublicKey:String!$cookbook:String!$iaas:String!$recipe:String!$region:String!$spaceID:ID!){addApp(appName: $appName, appKey: {publicKey: $appPublicKey}, cookbook: $cookbook, recipe: $recipe, iaas: $iaas, region: $region, spaceID: $spaceID){idKey,app{appID}}}",
 	"variables": {
 		"appName": "test-simple-deployment",
 		"appPublicKey": "PubKey4",
@@ -107,7 +107,10 @@ const addAppRequest = `{
 const addAppResponse = `{
 	"data": {
 		"addApp": {
-			"appID": "new app id"
+			"idKey": "test id key",
+			"app": {
+				"appID": "new app id"
+			}			
 		}
 	}
 }`

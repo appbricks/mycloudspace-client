@@ -27,7 +27,10 @@ func (a *AppAPI) AddApp(
 
 	var mutation struct {
 		AddApp struct {
-			AppID graphql.String `graphql:"appID"`
+			IdKey graphql.String
+			App struct {
+				AppID graphql.String `graphql:"appID"`
+			}
 		} `graphql:"addApp(appName: $appName, appKey: {publicKey: $appPublicKey}, cookbook: $cookbook, recipe: $recipe, iaas: $iaas, region: $region, spaceID: $spaceID)"`
 	}
 	variables := map[string]interface{}{
@@ -45,8 +48,9 @@ func (a *AppAPI) AddApp(
 	}
 	logger.TraceMessage("AppAPI.AddApp(): addApp mutation returned response: %# v", mutation)
 
-	tgt.SpaceID = string(mutation.AddApp.AppID)
-
+	tgt.SpaceKey = string(mutation.AddApp.IdKey)
+	tgt.SpaceID = string(mutation.AddApp.App.AppID)
+	
 	return nil
 }
 
