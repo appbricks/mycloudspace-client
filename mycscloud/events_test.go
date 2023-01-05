@@ -21,11 +21,7 @@ var _ = Describe("Event API", func() {
 
 	var (
 		err error
-
-		cfg        config.Config
-		testServer *test_server.MockHttpServer
-
-		eventPublisher *mycscloud.EventPublisher
+		cfg config.Config
 	)
 
 	BeforeEach(func() {
@@ -48,22 +44,20 @@ var _ = Describe("Event API", func() {
 		Expect(err).NotTo(HaveOccurred())
 		device.DeviceID = "676741a9-0608-4633-b293-05e49bea6504"
 		cfg = mocks.NewMockConfig(authContext, deviceContext, nil)
-
-		// start test server
-		testServer = test_server.NewMockHttpServer(9096)
-		testServer.ExpectCommonHeader("Authorization", "mock authorization token")		
-		testServer.Start()
-
-		// Events API client
-		eventPublisher = mycscloud.NewEventPublisher("http://localhost:9096/", "", cfg)
-		// eventsAPI = mycscloud.NewEventPublisher("https://ss3hvtbnzrasfbevhaoa4mlaiu.appsync-api.us-east-1.amazonaws.com/graphql", "", cfg)
 	})
 
-	AfterEach(func() {		
-		testServer.Stop()
-	})	
+	startMockNodeService := func() (*test_server.MockHttpServer, *mycscloud.EventPublisher) {
+		// start test server
+		testServer, testServerUrl := startTestServer()		
+		// Events API client
+		return testServer,
+			mycscloud.NewEventPublisher(testServerUrl, "", cfg)
+			// mycscloud.NewEventPublisher("https://ss3hvtbnzrasfbevhaoa4mlaiu.appsync-api.us-east-1.amazonaws.com/graphql", "", cfg)
+	}
 
 	It("push events to cloud api", func() {
+		testServer, eventPublisher := startMockNodeService()
+		defer testServer.Stop()
 
 		cloudEvents := []*cloudevents.Event{}
 		for _, e := range testEvents {

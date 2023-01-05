@@ -1,11 +1,15 @@
 package mycscloud_test
 
 import (
+	"fmt"
 	"path"
 	"runtime"
+	"sync/atomic"
 	"testing"
 
 	"github.com/mevansam/goutils/logger"
+
+	test_server "github.com/mevansam/goutils/test/mocks"
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
@@ -13,6 +17,8 @@ import (
 
 var (
 	sourceDirPath string
+
+	counter atomic.Int32
 )
 
 func TestMyCSCloud(t *testing.T) {
@@ -27,6 +33,17 @@ func TestMyCSCloud(t *testing.T) {
 
 var _ = AfterSuite(func() {
 })
+
+func startTestServer() (*test_server.MockHttpServer, string) {
+
+	// start test server
+	port := int(counter.Add(1)) + 9090
+	testServer := test_server.NewMockHttpServer(port)
+	testServer.ExpectCommonHeader("Authorization", "mock authorization token")		
+	testServer.Start()
+
+	return testServer, fmt.Sprintf("http://localhost:%d/", port)
+}
 
 const errorResponse = `{
 	"data": {},

@@ -13,24 +13,17 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-var _ = FDescribe("App API", func() {
+var _ = Describe("App API", func() {
 
 	var (
 		err error
 
-		cfg        config.Config
-		testServer *test_server.MockHttpServer
-
-		appAPI *mycscloud.AppAPI
+		cfg config.Config
 
 		tgt, spaceTgt *target.Target
 	)
 
 	BeforeEach(func() {
-		// start test server
-		testServer = test_server.NewMockHttpServer(9096)
-		testServer.ExpectCommonHeader("Authorization", "mock authorization token")		
-		testServer.Start()
 
 		// initialize test config / context
 		cfg, err = mycs_mocks.NewMockConfig(sourceDirPath)
@@ -41,17 +34,19 @@ var _ = FDescribe("App API", func() {
 
 		tgt, err = cfg.TargetContext().GetTarget("test:simple/aws/test-simple-deployment/testsimple1")
 		Expect(err).ToNot(HaveOccurred())
-
-		// App API client
-		appAPI = mycscloud.NewAppAPI(api.NewGraphQLClient("http://localhost:9096/", "", cfg))
-		// appAPI = mycscloud.NewAppAPI(api.NewGraphQLClient("https://ss3hvtbnzrasfbevhaoa4mlaiu.appsync-api.us-east-1.amazonaws.com/graphql", "", cfg))		
 	})
 
-	AfterEach(func() {		
-		testServer.Stop()
-	})	
+	startMockNodeService := func() (*test_server.MockHttpServer, *mycscloud.AppAPI) {
+		// start test server
+		testServer, testServerUrl := startTestServer()		
+		// App API client
+		return testServer, 
+			mycscloud.NewAppAPI(api.NewGraphQLClient(testServerUrl, "", cfg))
+	}
 
 	It("adds an app", func() {
+		testServer, appAPI := startMockNodeService()
+		defer testServer.Stop()
 
 		testServer.PushRequest().
 			ExpectJSONRequest(addAppRequest).
@@ -71,6 +66,8 @@ var _ = FDescribe("App API", func() {
 	})
 
 	It("deletes an app", func() {
+		testServer, appAPI := startMockNodeService()
+		defer testServer.Stop()
 
 		testServer.PushRequest().
 			ExpectJSONRequest(deleteAppRequest).

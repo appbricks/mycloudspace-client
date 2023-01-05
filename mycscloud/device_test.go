@@ -1,9 +1,6 @@
 package mycscloud_test
 
 import (
-	"fmt"
-	"sync/atomic"
-
 	"golang.org/x/oauth2"
 
 	"github.com/appbricks/cloud-builder/config"
@@ -25,8 +22,6 @@ var _ = Describe("Device API", func() {
 		cfg config.Config
 	)
 
-	counter := atomic.Int32{}
-
 	BeforeEach(func() {
 
 		authContext := config.NewAuthContext()
@@ -35,7 +30,6 @@ var _ = Describe("Device API", func() {
 				map[string]interface{}{
 					"id_token": "mock authorization token",
 					// "id_token": "eyJraWQiOiJxbWdET3lPXC95S1VhdWloSE1RcjVxZ3orZWFnWms1dmNLNFBkejBPejdSdz0iLCJhbGciOiJSUzI1NiJ9.eyJhdF9oYXNoIjoiSng1WFNSUWY3UXZ0N1lwUU5ReDhCUSIsImN1c3RvbTpwcmVmZXJlbmNlcyI6IntcInByZWZlcnJlZE5hbWVcIjpcImtlblwiLFwiZW5hYmxlQmlvbWV0cmljXCI6ZmFsc2UsXCJlbmFibGVNRkFcIjpmYWxzZSxcImVuYWJsZVRPVFBcIjpmYWxzZSxcInJlbWVtYmVyRm9yMjRoXCI6dHJ1ZX0iLCJzdWIiOiI5NzgwODc1YS0xM2FhLTQ2MzctYWY3Yy04ZWY1ZGNlYjA2NjQiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaXNzIjoiaHR0cHM6XC9cL2NvZ25pdG8taWRwLnVzLWVhc3QtMS5hbWF6b25hd3MuY29tXC91cy1lYXN0LTFfaHlPV1A2YkhmIiwicGhvbmVfbnVtYmVyX3ZlcmlmaWVkIjp0cnVlLCJjb2duaXRvOnVzZXJuYW1lIjoia2VuIiwiZ2l2ZW5fbmFtZSI6Iktlbm5ldGgiLCJtaWRkbGVfbmFtZSI6IkgiLCJjdXN0b206dXNlcklEIjoiZWIwMTgxNzUtYTBjZC00NDcyLTgwOWYtYTYzNWFmYjAzYjE2IiwiYXVkIjoiMTh0ZmZtazd2Y2g3MTdia3NlaGo0NGQ4NXIiLCJldmVudF9pZCI6Ijk4MjhhNjIyLTA5MzMtNGUzYi05NGY4LTY0M2M0NzYyZDkyMCIsInRva2VuX3VzZSI6ImlkIiwiYXV0aF90aW1lIjoxNjIzNDY4MDgyLCJwaG9uZV9udW1iZXIiOiIrMTk3ODY1MjY2MTUiLCJleHAiOjE2MjM1NTQ0ODIsImlhdCI6MTYyMzQ2ODA4MiwiZmFtaWx5X25hbWUiOiJHaWJzb24iLCJlbWFpbCI6InRlc3QuYXBwYnJpY2tzQGdtYWlsLmNvbSJ9.pldrjq0K57R7RTWu6JuFbpV0IsEVvpKgZVENElPYlNs5P2j99vloNMaiEpu7mlmpvwmOFwBkUX4Fq2F52Ll7IIL-ztiZcbMoglsN2-mBjjIScePz6LDJirtzqxZr-YBzfTu9ZBwl3HVvIwVwDT7n2p03UZ6bTEkQF33mmXI9GUakdrW9w3lFO_Wn0Eu7AYF1Ilp6MV0R8L-2zM-Z-tJsI5oDw1xWOOuYfxcPEkWzoKbLGwUH-qK5L6o3SxFkYy5ZPiKs52biOKTzuFV7UULpTnXWSlFMIbVKMR8T9qY6Pakpd6o--gFSNDuyhE5gEMRoP1q3B8x3IpXxaPintIksnA",
-					// "id_token": "eyJraWQiOiJxbWdET3lPXC95S1VhdWloSE1RcjVxZ3orZWFnWms1dmNLNFBkejBPejdSdz0iLCJhbGciOiJSUzI1NiJ9.eyJhdF9oYXNoIjoibjVmR2lkYzA3ellCaVRpVnl0Z0swUSIsImN1c3RvbTpwcmVmZXJlbmNlcyI6IntcInByZWZlcnJlZE5hbWVcIjpcImJlbm55XCIsXCJlbmFibGVCaW9tZXRyaWNcIjpmYWxzZSxcImVuYWJsZU1GQVwiOmZhbHNlLFwiZW5hYmxlVE9UUFwiOmZhbHNlLFwicmVtZW1iZXJGb3IyNGhcIjpmYWxzZX0iLCJzdWIiOiI2NGFhZDQ4NC05NmYzLTQxYjctYjY1Yy1hYWZhNTIzYWI0YzAiLCJlbWFpbF92ZXJpZmllZCI6dHJ1ZSwiaXNzIjoiaHR0cHM6XC9cL2NvZ25pdG8taWRwLnVzLWVhc3QtMS5hbWF6b25hd3MuY29tXC91cy1lYXN0LTFfaHlPV1A2YkhmIiwicGhvbmVfbnVtYmVyX3ZlcmlmaWVkIjpmYWxzZSwiY29nbml0bzp1c2VybmFtZSI6ImJlbiIsImdpdmVuX25hbWUiOiJCZW5qYW1pbiIsImN1c3RvbTp1c2VySUQiOiJhYjA1NDM0Zi05OTJhLTQzMzItYmE2Yy05YzU5ZWRhNmIwMmYiLCJhdWQiOiIxOHRmZm1rN3ZjaDcxN2Jrc2VoajQ0ZDg1ciIsImV2ZW50X2lkIjoiOGVhOTA5YmUtYmI4NC00N2VkLWFlNTItNjBhNmYzNTM5Y2IxIiwidG9rZW5fdXNlIjoiaWQiLCJhdXRoX3RpbWUiOjE2MjMyNzA5MTgsInBob25lX251bWJlciI6IisxOTc4NjUyNjYxNSIsImV4cCI6MTYyMzM1NzMxOCwiaWF0IjoxNjIzMjcwOTE4LCJmYW1pbHlfbmFtZSI6IkZyYW5rbGluIiwiZW1haWwiOiJtZXZhbnNhbTczQGdtYWlsLmNvbSJ9.EgK5PIbYYtv7mVMR8gnV9F-VeKYxhSJu-mUfhDFRr7bwE4P7MvxA5cUObFUarG9M5lvaEUt3jffwI62BVVe2QlaHtGKVevjf95MEzno8oDVPlsHE43juVg5NfEdmnUOuBalr9Qy4f77e4H4t47P5cvLzhYyNY5bEJKsx7BijBaw9zzxpSZGjxEXUk8aA6J4l0htBuXw04BsRkTFWuus9N_Yb3TrRebt_sp107TwBAYFJmmgse8mIWBaYxk-OAHPQ3EvitPRUCQ7JD1EK8tqK1zoMcIDxFVsOFfHAirzhtjSMXdz_FwmfvKD_WJ93zf_rt_gmCaUYmC-gL269qMp1Gw",
 				},
 			),
 		)
@@ -43,18 +37,12 @@ var _ = Describe("Device API", func() {
 	})
 
 	startMockNodeService := func() (*test_server.MockHttpServer, *mycscloud.DeviceAPI) {
-
 		// start test server
-		port := int(counter.Add(1)) + 9090
-		testServer := test_server.NewMockHttpServer(port)
-		testServer.ExpectCommonHeader("Authorization", "mock authorization token")		
-		testServer.Start()
-
+		testServer, testServerUrl := startTestServer()		
 		// Device API client
-		deviceAPI := mycscloud.NewDeviceAPI(api.NewGraphQLClient(fmt.Sprintf("http://localhost:%d/", port), "", cfg))
-		// deviceAPI = mycscloud.NewDeviceAPI(api.NewGraphQLClient("https://ss3hvtbnzrasfbevhaoa4mlaiu.appsync-api.us-east-1.amazonaws.com/graphql", "", cfg))
-
-		return testServer, deviceAPI
+		return testServer,
+			mycscloud.NewDeviceAPI(api.NewGraphQLClient(testServerUrl, "", cfg))
+			// mycscloud.NewDeviceAPI(api.NewGraphQLClient("https://ss3hvtbnzrasfbevhaoa4mlaiu.appsync-api.us-east-1.amazonaws.com/graphql", "", cfg))
 	}
 
 	It("gets device information", func() {

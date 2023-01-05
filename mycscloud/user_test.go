@@ -25,31 +25,25 @@ var _ = Describe("User API", func() {
 
 	var (
 		err error
-
-		cfg        config.Config
-		testServer *test_server.MockHttpServer
-
-		userAPI *mycscloud.UserAPI
+		cfg config.Config
 	)
 
 	BeforeEach(func() {
 		cfg, err = mycs_mocks.NewMockConfig(sourceDirPath)
-		Expect(err).NotTo(HaveOccurred())
-		
+		Expect(err).NotTo(HaveOccurred())		
+	})
+
+	startMockNodeService := func() (*test_server.MockHttpServer, *mycscloud.UserAPI) {
 		// start test server
-		testServer = test_server.NewMockHttpServer(9096)
-		testServer.ExpectCommonHeader("Authorization", "mock authorization token")
-		testServer.Start()
-
-		// user API client
-		userAPI = mycscloud.NewUserAPI(api.NewGraphQLClient("http://localhost:9096/", "", cfg))
-	})
-
-	AfterEach(func() {
-		testServer.Stop()
-	})
+		testServer, testServerUrl := startTestServer()		
+		// User API client
+		return testServer,
+			mycscloud.NewUserAPI(api.NewGraphQLClient(testServerUrl, "", cfg))
+	}
 
 	It("searches for a user", func() {
+		testServer, userAPI := startMockNodeService()
+		defer testServer.Stop()
 
 		testServer.PushRequest().
 			ExpectJSONRequest(userSearchRequest).
@@ -69,6 +63,8 @@ var _ = Describe("User API", func() {
 	})
 	
 	It("retrieves a user", func() {
+		testServer, userAPI := startMockNodeService()
+		defer testServer.Stop()
 
 		user := &userspace.User{
 			UserID: "test user id x",
@@ -102,6 +98,8 @@ var _ = Describe("User API", func() {
 	})
 
 	It("retrieves a user's config", func() {
+		testServer, userAPI := startMockNodeService()
+		defer testServer.Stop()
 
 		key, err := crypto.NewRSAKey()
 		Expect(err).ToNot(HaveOccurred())
@@ -145,6 +143,8 @@ var _ = Describe("User API", func() {
 	})
 
 	It("updates a user's key", func() {
+		testServer, userAPI := startMockNodeService()
+		defer testServer.Stop()
 
 		timestamp := time.Now().UnixMilli()
 		user := &userspace.User{
@@ -172,6 +172,8 @@ var _ = Describe("User API", func() {
 	})
 
 	It("updates a user's config", func() {
+		testServer, userAPI := startMockNodeService()
+		defer testServer.Stop()
 
 		key, err := crypto.NewRSAKey()
 		Expect(err).ToNot(HaveOccurred())

@@ -18,13 +18,10 @@ var _ = Describe("Space API", func() {
 
 	var (
 		err error
-
-		cfg        config.Config
-		testServer *test_server.MockHttpServer
-
-		spaceAPI *mycscloud.SpaceAPI
-
+		cfg config.Config
 		tgt *target.Target
+
+		testServerUrl string
 	)
 
 	BeforeEach(func() {
@@ -32,22 +29,21 @@ var _ = Describe("Space API", func() {
 		Expect(err).NotTo(HaveOccurred())
 		
 		tgt, err = cfg.TargetContext().GetTarget("test:basic/aws/aa/cookbook")
-		Expect(err).ToNot(HaveOccurred())
-		
+		Expect(err).ToNot(HaveOccurred())		
+	})
+
+	startMockNodeService := func() (*test_server.MockHttpServer, *mycscloud.SpaceAPI) {
+		var testServer *test_server.MockHttpServer
 		// start test server
-		testServer = test_server.NewMockHttpServer(9096)
-		testServer.ExpectCommonHeader("Authorization", "mock authorization token")
-		testServer.Start()
-
-		// space API client
-		spaceAPI = mycscloud.NewSpaceAPI(api.NewGraphQLClient("http://localhost:9096/", "", cfg))
-	})
-
-	AfterEach(func() {
-		testServer.Stop()
-	})
+		testServer, testServerUrl = startTestServer()
+		// Space API client
+		return testServer,
+			mycscloud.NewSpaceAPI(api.NewGraphQLClient(testServerUrl, "", cfg))
+	}
 
 	It("adds a space", func() {
+		testServer, spaceAPI := startMockNodeService()
+		defer testServer.Stop()
 
 		testServer.PushRequest().
 			ExpectJSONRequest(addSpaceRequest).
@@ -70,6 +66,8 @@ var _ = Describe("Space API", func() {
 	})
 
 	It("deletes a space", func() {
+		testServer, spaceAPI := startMockNodeService()
+		defer testServer.Stop()
 
 		var (
 			userIDs []string
@@ -99,6 +97,8 @@ var _ = Describe("Space API", func() {
 	})
 
 	It("retrieves user's spaces", func() {
+		testServer, spaceAPI := startMockNodeService()
+		defer testServer.Stop()
 
 		testServer.PushRequest().
 			ExpectJSONRequest(getSpacesRequest).
@@ -138,12 +138,14 @@ var _ = Describe("Space API", func() {
 	})
 
 	It("retrieves user's space nodes", func() {
+		testServer, _ := startMockNodeService()
+		defer testServer.Stop()
 
 		testServer.PushRequest().
 			ExpectJSONRequest(getSpaceNodesRequest).
 			RespondWith(getSpaceNodesResponse)
 
-		spaceNodes, err := mycscloud.GetSpaceNodes(cfg, "http://localhost:9096/")
+		spaceNodes, err := mycscloud.GetSpaceNodes(cfg, testServerUrl)
 		Expect(err).ToNot(HaveOccurred())
 		Expect(testServer.Done()).To(BeTrue())
 
