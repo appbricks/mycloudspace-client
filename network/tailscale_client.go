@@ -68,7 +68,7 @@ func NewTailscaleClient(
 
 	tsc := &TailscaleClient{
 		tunDevName:      tunDevName,
-		spaceDeviceName: spaceDeviceName,
+		spaceDeviceName: strings.ToLower(spaceDeviceName),
 		spaceNodes:      spaceNodes,
 
 		nc: network.NewNetworkContext(),
