@@ -2,18 +2,18 @@ package network
 
 import (
 	"context"
+	"crypto/tls"
 	"crypto/x509"
 	"fmt"
 	"net"
-	"net/http"
 	"net/netip"
 	"net/url"
 	"os"
 	"time"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
-	"tailscale.com/control/controlbase"
 	"tailscale.com/ipn/ipnlocal"
+	"tailscale.com/net/tlsdial"
 	"tailscale.com/paths"
 	"tailscale.com/wgengine/router"
 
@@ -101,7 +101,8 @@ func NewTailscaleDaemon(
 	}
 	
 	// Set MyCS Hooks
-	controlbase.MyCSHook = tsd
+	// controlbase.MyCSHook = tsd
+	tlsdial.MyCSHook = tsd
 	ipnlocal.MyCSHook = tsd
 	router.MyCSHook = tsd
 
@@ -250,19 +251,19 @@ func (tsd *TailscaleDaemon) Write(p []byte) (n int, err error) {
 
 // MyCS Hooks
 
-// hook in - tailscale.com/control/controlclient/direct.go
-func (tsd *TailscaleDaemon) ConfigureHTTPTransport(url string, tr *http.Transport) error {
-
+// hook in - tailscale.com/net/tlsdial/tlsdial.go
+func (tsd *TailscaleDaemon) ConfigureTLS(host string, tc *tls.Config) error {
+	
 	var (
 		err error
 		
 		certPool *x509.CertPool
 	)
 
-	if space := tsd.spaceNodes.LookupSpaceByEndpoint(url); space != nil {
+	if space := tsd.spaceNodes.LookupSpaceByEndpoint(host); space != nil {
 
 		logger.DebugMessage(
-			"TailscaleDaemon.ConfigureHTTPClient(): Authorizing access to space: %s", 
+			"TailscaleDaemon.ConfigureTLS(): Authorizing access to space: %s", 
 			space.Key())
 
 		// add locally signed ca root of space node
@@ -272,26 +273,28 @@ func (tsd *TailscaleDaemon) ConfigureHTTPTransport(url string, tr *http.Transpor
 		if len(localCARoot) > 0 {
 			if certPool, err = x509.SystemCertPool(); err != nil {
 				logger.DebugMessage(
-					"TailscaleDaemon.ConfigureHTTPClient(): Using new empty cert pool due to error retrieving system cert pool.: %s", 
+					"TailscaleDaemon.ConfigureTLS(): Using new empty cert pool due to error retrieving system cert pool.: %s", 
 					err.Error(),
 				)
 				certPool = x509.NewCertPool()
 			}
 			certPool.AppendCertsFromPEM([]byte(localCARoot))
-			tr.TLSClientConfig.RootCAs = certPool
-			tr.TLSClientConfig.InsecureSkipVerify = false
-			tr.TLSClientConfig.VerifyConnection = nil
+			tc.RootCAs = certPool
+			tc.InsecureSkipVerify = false
+			tc.VerifyConnection = nil
 
 		} else {
-			tr.TLSClientConfig.InsecureSkipVerify = true
-			tr.TLSClientConfig.VerifyConnection = nil
+			tc.InsecureSkipVerify = true
+			tc.VerifyConnection = nil
 		}
 
 		return nil
 
 	} else {
 		return fmt.Errorf(
-			"tailscale daemon requested an invalid space url to login to: %s", url)
+			"%s is not a recognized mycs node", 
+			host,
+		)
 	}
 }
 

@@ -2,6 +2,7 @@ package mycscloud
 
 import (
 	"fmt"
+	"net/url"
 	"sort"
 	"sync"
 
@@ -111,6 +112,11 @@ func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) error
 			if t.Error() == nil {
 				if endpoint, err = t.GetEndpoint(); err == nil {
 					sn.spaceNodeByEndpoint[endpoint] = t
+
+					// also map host to target
+					if url, _ := url.Parse(endpoint); url != nil {
+						sn.spaceNodeByEndpoint[url.Host] = t
+					}
 				}	
 			} else {
 				logger.DebugMessage("SpaceNodes.consolidateRemoteAndLocalNodes(): Failed to load remote state for target: %s", t.Key())
@@ -149,6 +155,11 @@ func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) error
 		// add space node if it has a valid endpoint
 		if endpoint, err = node.GetEndpoint(); addNode && err == nil {
 			sn.spaceNodeByEndpoint[endpoint] = node
+
+			// also map host to node
+			if url, _ := url.Parse(endpoint); url != nil {
+				sn.spaceNodeByEndpoint[url.Host] = node
+			}
 		}
 
 		// remove spaces that have a local target
