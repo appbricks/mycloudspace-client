@@ -7,6 +7,7 @@ import (
 	"github.com/hasura/go-graphql-client"
 
 	"github.com/mevansam/goutils/logger"
+	"github.com/mevansam/goutils/utils"
 )
 
 type AppAPI struct {
@@ -25,6 +26,11 @@ func (a *AppAPI) AddApp(
 	spaceID string,
 ) error {
 
+	region := tgt.Provider.Region()
+	if region == nil {
+		region = utils.PtrToStr("")
+	}
+
 	var mutation struct {
 		AddApp struct {
 			IdKey graphql.String
@@ -39,7 +45,7 @@ func (a *AppAPI) AddApp(
 		"cookbook": graphql.String(tgt.CookbookName),
 		"recipe": graphql.String(tgt.RecipeName),
 		"iaas": graphql.String(tgt.RecipeIaas),
-		"region": graphql.String(*tgt.Provider.Region()),
+		"region": graphql.String(*region),
 		"spaceID": graphql.ID(spaceID),
 	}
 	if err := a.apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
