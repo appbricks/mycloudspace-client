@@ -116,8 +116,8 @@ func (tsc *TailscaleClient) Connect(
 		controlServer, connectInfo,
 	)
 
-	upArgs := map[string]interface{}{
-		"authKey": connectInfo.AuthKey,
+	loginArgs := map[string]interface{}{
+		"loginServer": controlServer,
 		"hostname": tsc.spaceDeviceName,
 		"acceptRoutes": true,
 		"acceptDNS": useSpaceDNS,
@@ -125,10 +125,15 @@ func (tsc *TailscaleClient) Connect(
 	if egressViaSpace {
 		if space.CanUseAsEgressNode() {
 			exitNode = &connectInfo.SpaceNode
-			upArgs["exitNodeIP"] = exitNode.IP
+			loginArgs["exitNodeIP"] = exitNode.IP
+			loginArgs["exitNodeAllowLANAccess"] = true
 
-			// when this fn exists the exit node
-			// is ready of an error occurred
+			// flag to indicate that although tailscale 
+			// returned "Success" we want to wait until
+			// the exist node is reachable. when this fn 
+			// exists we would have confired that the
+			// exit node is reachable otherwise the
+			// connection will be terminated.
 			tsc.waitForExitNode = true
 			defer func() {
 				tsc.waitForExitNode = false
@@ -142,9 +147,10 @@ func (tsc *TailscaleClient) Connect(
 		}
 	}
 	tsc.connState = Connecting
-	if err = cli.RunUp(
-		tsc.ctx, controlServer, 
-		upArgs,
+	if err = cli.RunLogin(
+		tsc.ctx, 
+		connectInfo.AuthKey,
+		loginArgs,
 	); err != nil {
 		return err
 	}
@@ -157,7 +163,7 @@ func (tsc *TailscaleClient) Connect(
 	if exitNode != nil {
 		// ensure exit node is reachable by pinging it. if ping 
 		// does not get a pong within 30s timeout then error out
-		if err = cli.RunPing(tsc.ctx, exitNode.Name, exitNode.IP, 30); err != nil {
+		if err = cli.RunPing(tsc.ctx, exitNode.Name, exitNode.IP, true, 30); err != nil {
 			return err
 		}
 		if err = configureExitNode(tsc, exitNode); err != nil {

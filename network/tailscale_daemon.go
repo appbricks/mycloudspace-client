@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
-	"fmt"
 	"net"
 	"net/netip"
 	"net/url"
@@ -178,7 +177,13 @@ func (tsd *TailscaleDaemon) Start() error {
 		)
 	}
 
-	return tsd.TailscaleDaemon.Start()
+	if err = tsd.TailscaleDaemon.Start(); err != nil {
+		return err
+	}
+	// ensure tailscale daemon 
+	// is in a logged out state
+	tsd.LocalBackend.Logout()
+	return nil
 }
 
 func (tsd *TailscaleDaemon) Stop() {
@@ -291,11 +296,12 @@ func (tsd *TailscaleDaemon) ConfigureTLS(host string, tc *tls.Config) error {
 		return nil
 
 	} else {
-		return fmt.Errorf(
-			"%s is not a recognized mycs node", 
+		logger.DebugMessage(
+			"TailscaleDaemon.ConfigureTLS(): %s is not a recognized mycs node", 
 			host,
 		)
 	}
+	return nil
 }
 
 // hook in - tailscale.com/ipn/ipnlocal/local.go
