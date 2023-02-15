@@ -100,7 +100,6 @@ func NewTailscaleDaemon(
 	}
 	
 	// Set MyCS Hooks
-	// controlbase.MyCSHook = tsd
 	tlsdial.MyCSHook = tsd
 	ipnlocal.MyCSHook = tsd
 	router.MyCSHook = tsd
