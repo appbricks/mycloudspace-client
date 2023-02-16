@@ -162,10 +162,20 @@ func (tsc *TailscaleClient) Connect(
 	}
 	if exitNode != nil {
 		// ensure exit node is reachable by pinging it. if ping 
-		// does not get a pong within 30s timeout then error out
-		if err = cli.RunPing(tsc.ctx, exitNode.Name, exitNode.IP, true, 30); err != nil {
+		// does not get a pong within 30s timeout then error out.
+		// run 1 ping with a 30s timeout 30 times. the underlying
+		// ping in tailscale cli will always run the counter down
+		// even when a pong is returned when direct flag is not 
+		// set.
+		for i := 0; i < 30; i++ {
+			if err = cli.RunPing(tsc.ctx, exitNode.Name, exitNode.IP, false, 1, 30); err == nil {
+				break
+			}
+		}
+		if err != nil {
 			return err
 		}
+
 		if err = configureExitNode(tsc, exitNode); err != nil {
 			return err
 		}
