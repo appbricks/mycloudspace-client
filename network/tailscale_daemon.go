@@ -12,6 +12,7 @@ import (
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
 	"tailscale.com/ipn/ipnlocal"
+	"tailscale.com/net/netns"
 	"tailscale.com/net/tlsdial"
 	"tailscale.com/paths"
 	"tailscale.com/wgengine/router"
@@ -101,6 +102,7 @@ func NewTailscaleDaemon(
 	
 	// Set MyCS Hooks
 	tlsdial.MyCSHook = tsd
+	netns.MyCSHook = tsd
 	ipnlocal.MyCSHook = tsd
 	router.MyCSHook = tsd
 
@@ -301,6 +303,11 @@ func (tsd *TailscaleDaemon) ConfigureTLS(host string, tc *tls.Config) error {
 		)
 	}
 	return nil
+}
+
+// hook in - tailscale.com/net/netns/netns_darwin_tailscaled.go
+func (tsd *TailscaleDaemon) IgnoreSetsockoptInt() bool {
+	return true
 }
 
 // hook in - tailscale.com/ipn/ipnlocal/local.go
