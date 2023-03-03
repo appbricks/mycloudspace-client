@@ -288,3 +288,35 @@ func (d *DeviceAPI) RemoveDeviceUser(deviceID, userID string) (string, string, e
 	logger.TraceMessage("DeviceAPI.RemoveDeviceUser(): deleteDeviceUser mutation returned response: %# v", mutation)
 	return string(mutation.DeleteDeviceUser.Device.DeviceID), string(mutation.DeleteDeviceUser.User.UserID), nil
 }
+
+func (d *DeviceAPI) SetDeviceWireguardConfig(
+	userID,
+	deviceID,
+	spaceID,
+	wgConfigName,
+	wgConfig string,
+	wgExpirationTimeout,
+	wgInactivityTimeout int,
+) error {
+
+	var mutation struct {
+		UpdateDevice struct {
+			WGConfigName graphql.String `graphql:"wgConfigName"`
+		} `graphql:"setDeviceUserSpaceConfig(userID: $userID, deviceID: $deviceID, spaceID: $spaceID, config: { wgConfigName: $wgConfigName, wgConfig: $wgConfig, wgExpirationTimeout: $wgExpirationTimeout, wgInactivityTimeout: $wgInactivityTimeout})"`
+	}
+	variables := map[string]interface{}{
+		"userID": graphql.ID(userID),
+		"deviceID": graphql.ID(deviceID),
+		"spaceID": graphql.ID(spaceID),
+		"wgConfigName": graphql.String(wgConfigName),
+		"wgConfig": graphql.String(wgConfig),
+		"wgExpirationTimeout": graphql.Int(wgExpirationTimeout),
+		"wgInactivityTimeout": graphql.Int(wgInactivityTimeout),
+	}
+	if err := d.apiClient.Mutate(context.Background(), &mutation, variables); err != nil {
+		logger.ErrorMessage("DeviceAPI.SetDeviceWireguardConfig(): setDeviceUserSpaceConfig mutation returned an error: %s", err.Error())
+		return err
+	}
+	logger.TraceMessage("DeviceAPI.SetDeviceWireguardConfig(): setDeviceUserSpaceConfig mutation returned response: %# v", mutation)
+	return nil
+}

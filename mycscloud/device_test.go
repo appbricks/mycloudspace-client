@@ -181,6 +181,32 @@ var _ = Describe("Device API", func() {
 		Expect(userIDs[1]).To(Equal("removed device user #2"))
 	})
 
+	It("updates a device user's wireguard config", func() {
+		testServer, deviceAPI := startMockNodeService()
+		defer testServer.Stop()
+
+		var (
+			deviceID, userID string
+		)
+
+		testServer.PushRequest().
+			ExpectJSONRequest(addDeviceUserRequest).
+			RespondWith(errorResponse)
+
+		_, _, err = deviceAPI.AddDeviceUser("a device id", "")
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
+
+		testServer.PushRequest().
+			ExpectJSONRequest(addDeviceUserRequest).
+			RespondWith(addDeviceUserResponse)
+		
+		deviceID, userID, err = deviceAPI.AddDeviceUser("a device id", "")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(deviceID).To(Equal("a device id"))
+		Expect(userID).To(Equal("a user id"))
+	})
+
 	It("adds a device user", func() {
 		testServer, deviceAPI := startMockNodeService()
 		defer testServer.Stop()
@@ -231,6 +257,26 @@ var _ = Describe("Device API", func() {
 		Expect(err).ToNot(HaveOccurred())
 		Expect(deviceID).To(Equal("a device id"))
 		Expect(userID).To(Equal("a user id"))
+	})
+
+	It("sets a user device's space configuration", func() {
+		testServer, deviceAPI := startMockNodeService()
+		defer testServer.Stop()
+
+		testServer.PushRequest().
+			ExpectJSONRequest(setDeviceUserSpaceConfigRequest).
+			RespondWith(errorResponse)
+
+		err = deviceAPI.SetDeviceWireguardConfig("a user id", "a device id", "a space id", "wg config name", "wg config details", 720, 168)
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("Message: a test error occurred, Locations: []"))
+
+		testServer.PushRequest().
+			ExpectJSONRequest(setDeviceUserSpaceConfigRequest).
+			RespondWith(setDeviceUserSpaceConfigResponse)
+		
+		err = deviceAPI.SetDeviceWireguardConfig("a user id", "a device id", "a space id", "wg config name", "wg config details", 720, 168)
+		Expect(err).ToNot(HaveOccurred())
 	})
 })
 
@@ -361,6 +407,26 @@ const deleteDeviceUserResponse = `{
 			"user": {
 				"userID": "a user id"
 			}
+		}
+	}
+}`
+
+const setDeviceUserSpaceConfigRequest = `{
+	"query": "mutation ($deviceID:ID!$spaceID:ID!$userID:ID!$wgConfig:String!$wgConfigName:String!$wgExpirationTimeout:Int!$wgInactivityTimeout:Int!){setDeviceUserSpaceConfig(userID: $userID, deviceID: $deviceID, spaceID: $spaceID, config: { wgConfigName: $wgConfigName, wgConfig: $wgConfig, wgExpirationTimeout: $wgExpirationTimeout, wgInactivityTimeout: $wgInactivityTimeout}){wgConfigName}}",
+	"variables": {
+		"userID": "a user id",
+		"deviceID": "a device id",
+		"spaceID": "a space id",
+		"wgConfigName": "wg config name",
+		"wgConfig": "wg config details",
+		"wgExpirationTimeout": 720,
+		"wgInactivityTimeout": 168
+	}
+}`
+const setDeviceUserSpaceConfigResponse = `{
+	"data": {
+		"setDeviceUserSpaceConfig": {
+			"wgConfigName": "aws-use2"
 		}
 	}
 }`
