@@ -302,12 +302,13 @@ func (d *DeviceAPI) SetDeviceWireguardConfig(
 	var mutation struct {
 		UpdateDevice struct {
 			WGConfigName graphql.String `graphql:"wgConfigName"`
-		} `graphql:"setDeviceUserSpaceConfig(userID: $userID, deviceID: $deviceID, spaceID: $spaceID, config: { wgConfigName: $wgConfigName, wgConfig: $wgConfig, wgExpirationTimeout: $wgExpirationTimeout, wgInactivityTimeout: $wgInactivityTimeout})"`
+		} `graphql:"setDeviceUserSpaceConfig(userID: $userID, deviceID: $deviceID, spaceID: $spaceID, config: { viewed: $viewed, wgConfigName: $wgConfigName, wgConfig: $wgConfig, wgExpirationTimeout: $wgExpirationTimeout, wgInactivityTimeout: $wgInactivityTimeout})"`
 	}
 	variables := map[string]interface{}{
 		"userID": graphql.ID(userID),
 		"deviceID": graphql.ID(deviceID),
 		"spaceID": graphql.ID(spaceID),
+		"viewed": graphql.Boolean(false),
 		"wgConfigName": graphql.String(wgConfigName),
 		"wgConfig": graphql.String(wgConfig),
 		"wgExpirationTimeout": graphql.Int(wgExpirationTimeout),

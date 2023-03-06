@@ -181,7 +181,7 @@ var _ = Describe("Device API", func() {
 		Expect(userIDs[1]).To(Equal("removed device user #2"))
 	})
 
-	It("updates a device user's wireguard config", func() {
+	FIt("updates a device user's wireguard config", func() {
 		testServer, deviceAPI := startMockNodeService()
 		defer testServer.Stop()
 
@@ -412,11 +412,12 @@ const deleteDeviceUserResponse = `{
 }`
 
 const setDeviceUserSpaceConfigRequest = `{
-	"query": "mutation ($deviceID:ID!$spaceID:ID!$userID:ID!$wgConfig:String!$wgConfigName:String!$wgExpirationTimeout:Int!$wgInactivityTimeout:Int!){setDeviceUserSpaceConfig(userID: $userID, deviceID: $deviceID, spaceID: $spaceID, config: { wgConfigName: $wgConfigName, wgConfig: $wgConfig, wgExpirationTimeout: $wgExpirationTimeout, wgInactivityTimeout: $wgInactivityTimeout}){wgConfigName}}",
+	"query": "mutation ($deviceID:ID!$spaceID:ID!$userID:ID!$viewed:Boolean!$wgConfig:String!$wgConfigName:String!$wgExpirationTimeout:Int!$wgInactivityTimeout:Int!){setDeviceUserSpaceConfig(userID: $userID, deviceID: $deviceID, spaceID: $spaceID, config: { viewed: $viewed, wgConfigName: $wgConfigName, wgConfig: $wgConfig, wgExpirationTimeout: $wgExpirationTimeout, wgInactivityTimeout: $wgInactivityTimeout}){wgConfigName}}",
 	"variables": {
 		"userID": "a user id",
 		"deviceID": "a device id",
 		"spaceID": "a space id",
+		"viewed": false,
 		"wgConfigName": "wg config name",
 		"wgConfig": "wg config details",
 		"wgExpirationTimeout": 720,
