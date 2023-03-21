@@ -3,7 +3,6 @@ package mycscloud_test
 import (
 	"github.com/appbricks/cloud-builder/config"
 	"github.com/appbricks/cloud-builder/target"
-	"github.com/appbricks/cloud-builder/userspace"
 	"github.com/appbricks/mycloudspace-client/api"
 	"github.com/appbricks/mycloudspace-client/mycscloud"
 
@@ -28,7 +27,7 @@ var _ = Describe("Space API", func() {
 		cfg, err = mycs_mocks.NewMockConfig(sourceDirPath)
 		Expect(err).NotTo(HaveOccurred())
 		
-		tgt, err = cfg.TargetContext().GetTarget("test:basic/aws/aa/cookbook")
+		tgt, err = cfg.TargetContext().GetTarget("aa/cookbook")
 		Expect(err).ToNot(HaveOccurred())		
 	})
 
@@ -151,24 +150,16 @@ var _ = Describe("Space API", func() {
 
 		sharedSpaces := spaceNodes.GetSharedSpaces()
 		Expect(len(sharedSpaces)).To(Equal(2))
-		Expect(sharedSpaces[0].Key()).To(Equal("test:basic/aws/bb/cookbook"))
+		Expect(sharedSpaces[0].Key()).To(Equal("space2"))
 		Expect(sharedSpaces[0].GetSpaceID()).To(Equal("aa4ea679-ee74-4de6-852c-ccf7636bf644"))
-		Expect(sharedSpaces[1].Key()).To(Equal("test:basic/aws/aa/appbrickscookbook"))
+		Expect(sharedSpaces[1].Key()).To(Equal("space3"))
 		Expect(sharedSpaces[1].GetSpaceID()).To(Equal("ad601f92-e073-4dfb-8e48-d97acde8e3fc"))
 
-		spaceNode := spaceNodes.LookupSpace("test:basic/aws/aa/cookbook", func(nodes []userspace.SpaceNode) userspace.SpaceNode {
-			Expect(len(nodes)).To(Equal(1))
-			return nodes[0]
-		})
+		spaceNode := spaceNodes.LookupSpace("aa/cookbook")
 		Expect(spaceNode.GetSpaceID()).To(Equal("1d812616-5955-4bc6-8b67-ec3f0f12a756"))
-		spaceNode = spaceNodes.LookupSpace("test:basic/aws/bb/cookbook", func(nodes []userspace.SpaceNode) userspace.SpaceNode {
-			Expect(len(nodes)).To(Equal(2))
-			Expect(nodes[0].GetSpaceID()).To(Equal("1d2a49d7-330b-4beb-a102-33049869e472"))
-			Expect(nodes[1].GetSpaceID()).To(Equal("aa4ea679-ee74-4de6-852c-ccf7636bf644"))
-			return nodes[1]
-		})
+		spaceNode = spaceNodes.LookupSpace("space2")
 		Expect(spaceNode.GetSpaceID()).To(Equal("aa4ea679-ee74-4de6-852c-ccf7636bf644"))
-		spaceNode = spaceNodes.LookupSpace("test:basic/aws/cc/cookbook", nil)
+		spaceNode = spaceNodes.LookupSpace("cc/cookbook")
 		Expect(spaceNode.GetSpaceID()).To(Equal(""))
 		spaceNode = spaceNodes.LookupSpaceByEndpoint("https://test2-wg-us-east-1.local")
 		Expect(spaceNode).NotTo(BeNil())
@@ -264,7 +255,7 @@ const getSpaceNodesResponse = `{
 					{
 						"space": {
 							"spaceID": "1d812616-5955-4bc6-8b67-ec3f0f12a756",
-							"spaceName": "cookbook",
+							"spaceName": "space1",
 							"publicKey": "-----BEGIN PUBLIC KEY-----\n****\n-----END PUBLIC KEY-----\n",
 							"cookbook": "test",
 							"recipe": "basic",
@@ -287,7 +278,7 @@ const getSpaceNodesResponse = `{
 					{
 						"space": {
 							"spaceID": "aa4ea679-ee74-4de6-852c-ccf7636bf644",
-							"spaceName": "cookbook",
+							"spaceName": "space2",
 							"publicKey": "-----BEGIN PUBLIC KEY-----\n****\n-----END PUBLIC KEY-----\n",
 							"cookbook": "test",
 							"recipe": "basic",
@@ -308,7 +299,7 @@ const getSpaceNodesResponse = `{
 					{
 						"space": {
 							"spaceID": "ad601f92-e073-4dfb-8e48-d97acde8e3fc",
-							"spaceName": "appbrickscookbook",
+							"spaceName": "space3",
 							"publicKey": "-----BEGIN PUBLIC KEY-----\n****\n-----END PUBLIC KEY-----\n",
 							"cookbook": "test",
 							"recipe": "basic",

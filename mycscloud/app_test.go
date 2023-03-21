@@ -29,10 +29,10 @@ var _ = Describe("App API", func() {
 		cfg, err = mycs_mocks.NewMockConfig(sourceDirPath)
 		Expect(err).NotTo(HaveOccurred())
 
-		spaceTgt, err = cfg.TargetContext().GetTarget("test:basic/aws/aa/cookbook")
+		spaceTgt, err = cfg.TargetContext().GetTarget("aa/cookbook")
 		Expect(err).ToNot(HaveOccurred())
 
-		tgt, err = cfg.TargetContext().GetTarget("test:simple/aws/test-simple-deployment/testsimple1")
+		tgt, err = cfg.TargetContext().GetTarget("test-simple-deployment/testsimple1")
 		Expect(err).ToNot(HaveOccurred())
 	})
 

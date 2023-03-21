@@ -20,7 +20,7 @@ type SpaceNodes struct {
 	config config.Config
 
 	// lookup by key for all remote and local space nodes
-	spaceNodes map[string][]userspace.SpaceNode
+	spaceNodes map[string]userspace.SpaceNode
 	// lookup by bastion url for all remote and local space nodes
 	spaceNodeByEndpoint map[string]userspace.SpaceNode
 	// remote space targets
@@ -45,7 +45,7 @@ func NewSpaceNodes(config config.Config) *SpaceNodes {
 	sn := &SpaceNodes{
 		config: config,
 		
-		spaceNodes:          make(map[string][]userspace.SpaceNode),
+		spaceNodes:          make(map[string]userspace.SpaceNode),
 		spaceNodeByEndpoint: make(map[string]userspace.SpaceNode),
 		sharedSpaces:        []*userspace.Space{},
 
@@ -65,7 +65,7 @@ func GetSpaceNodes(config config.Config, apiUrl string) (*SpaceNodes, error) {
 	sn := &SpaceNodes{
 		config: config,
 		
-		spaceNodes:          make(map[string][]userspace.SpaceNode),
+		spaceNodes:          make(map[string]userspace.SpaceNode),
 		spaceNodeByEndpoint: make(map[string]userspace.SpaceNode),
 
 		spaceAPIClients: make(map[string]*apiClientInstance),
@@ -91,8 +91,7 @@ func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) error
 		err    error
 		exists bool
 
-		node  userspace.SpaceNode
-		nodes []userspace.SpaceNode
+		node userspace.SpaceNode
 
 		endpoint string
 	)
@@ -107,7 +106,7 @@ func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) error
 				spaceTargets[t.NodeID] = t
 			}
 			// all local targets should have unique keys
-			sn.spaceNodes[t.Key()] = []userspace.SpaceNode{t}
+			sn.spaceNodes[t.Key()] = t
 			// add target if it has a valid endpoint
 			if t.Error() == nil {
 				if endpoint, err = t.GetEndpoint(); err == nil {
@@ -134,31 +133,19 @@ func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) error
 	for i := j; i >= 0; i-- {
 		node = sn.sharedSpaces[i]		
 
-		// remote space node key may have duplicates so 
-		// create a list of of nodes with similar keys
-		addNode := true
-		if nodes, exists = sn.spaceNodes[node.Key()]; !exists {
-			sn.spaceNodes[node.Key()] = []userspace.SpaceNode{node}
-		} else {
-			for _, n := range nodes {
-				if node.GetSpaceID() == n.GetSpaceID() {
-					// if remote node and local node both have 
-					// the same space id then they are identical
-					addNode = false;
-					break
-				}
-			}
-			if addNode {
-				sn.spaceNodes[node.Key()] = append(nodes, node)
-			}
-		}
-		// add space node if it has a valid endpoint
-		if endpoint, err = node.GetEndpoint(); addNode && err == nil {
-			sn.spaceNodeByEndpoint[endpoint] = node
+		// add remote space node if it does not 
+		// exist as a locally managed target
+		if _, exists = sn.spaceNodes[node.Key()]; !exists {
+			sn.spaceNodes[node.Key()] = node
 
-			// also map host to node
-			if url, _ := url.Parse(endpoint); url != nil {
-				sn.spaceNodeByEndpoint[url.Host] = node
+			// add space node if it has a valid endpoint
+			if endpoint, err = node.GetEndpoint(); err == nil {
+				sn.spaceNodeByEndpoint[endpoint] = node
+
+				// also map host to node
+				if url, _ := url.Parse(endpoint); url != nil {
+					sn.spaceNodeByEndpoint[url.Host] = node
+				}
 			}
 		}
 
@@ -175,21 +162,8 @@ func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) error
 	return nil
 }
 
-func (sn *SpaceNodes) LookupSpace(
-	key string, 
-	selectNode func(nodes []userspace.SpaceNode) userspace.SpaceNode,
-) userspace.SpaceNode {
-
-	nodes, exists := sn.spaceNodes[key]
-	if exists {
-		if len(nodes) > 0 {
-			if len(nodes) > 1 && selectNode != nil {
-				return selectNode(nodes)
-			}
-			return nodes[0]
-		}
-	}
-	return nil
+func (sn *SpaceNodes) LookupSpace(key string) userspace.SpaceNode {
+	return sn.spaceNodes[key]
 }
 
 func (sn *SpaceNodes) LookupSpaceByEndpoint(endpoint string) userspace.SpaceNode {
@@ -254,8 +228,8 @@ func (sn *SpaceNodes) ReleaseApiClientForSpace(apiClient *mycsnode.ApiClient)  {
 func (sn *SpaceNodes) GetAllSpaces() []userspace.SpaceNode {
 
 	spaces := []userspace.SpaceNode{}
-	for _, nodes := range sn.spaceNodes {
-		spaces = append(spaces, nodes...)
+	for _, node := range sn.spaceNodes {
+		spaces = append(spaces, node)
 	}
 	sort.Sort(userspace.SpaceCollection(spaces))
 	return spaces

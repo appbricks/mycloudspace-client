@@ -181,7 +181,7 @@ var _ = Describe("Device API", func() {
 		Expect(userIDs[1]).To(Equal("removed device user #2"))
 	})
 
-	FIt("updates a device user's wireguard config", func() {
+	It("updates a device user's wireguard config", func() {
 		testServer, deviceAPI := startMockNodeService()
 		defer testServer.Stop()
 
