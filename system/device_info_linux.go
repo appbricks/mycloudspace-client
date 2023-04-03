@@ -29,12 +29,12 @@ func init() {
 		home, _ := homedir.Dir()
 
 		if systemDetectVirt, err = run.NewCLI("/usr/bin/systemd-detect-virt", home, &outputBuffer, &outputBuffer); err != nil {
-			logger.ErrorMessage("system.init:linux(): Error creating CLI for /usr/bin/systemd-detect-virt: %s", err.Error())
+			logger.DebugMessage("system.init:linux(): Unable to create CLI for /usr/bin/systemd-detect-virt: %s", err.Error())
 			deviceTypeC <- deviceType
 			return
 		}
 		if err = systemDetectVirt.Run([]string{}); err != nil {
-			logger.ErrorMessage("system.init:linux(): Error running \"systemd-detect-virt\": %s", err.Error())
+			logger.DebugMessage("system.init:linux(): \"systemd-detect-virt\" returned an error: %s", err.Error())
 			deviceTypeC <- deviceType
 			return
 		}
