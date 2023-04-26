@@ -17,6 +17,8 @@ func __getTSRoutesToExclude() map[string]bool {
 	var (
 		err error
 
+		nc network.NetworkContext
+
 		ifaceList    interfaces.List
 		ipsetBuilder netipx.IPSetBuilder
 		ipset        *netipx.IPSet
@@ -38,7 +40,14 @@ func __getTSRoutesToExclude() map[string]bool {
 		)
 		return tsRoutesToExclude
 	}
-	defaultIface := network.NewNetworkContext().DefaultInterface()
+	if nc, err = network.NewNetworkContext(); err != nil {
+		logger.ErrorMessage(
+			"__getTSRoutesToExclude(): Unable to create new network context: %s", 
+			err.Error(),
+		)
+		return tsRoutesToExclude
+	}
+	defaultIface := nc.DefaultInterface()
 	if err = ifaceList.ForeachInterfaceAddress(func(iface interfaces.Interface, pfx netip.Prefix) {
 		if iface.Name == defaultIface {
 			ipsetBuilder.AddPrefix(pfx)

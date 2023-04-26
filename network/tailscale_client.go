@@ -64,14 +64,24 @@ func NewTailscaleClient(
 	tunDevName string, 
 	spaceDeviceName string, 
 	spaceNodes *mycscloud.SpaceNodes,
-) *TailscaleClient {
+) (*TailscaleClient, error) {
+
+	var (
+		err error
+
+		nc network.NetworkContext
+	)
+
+	if nc, err = network.NewNetworkContext(); err != nil {
+		return nil, err
+	}
 
 	tsc := &TailscaleClient{
 		tunDevName:      tunDevName,
 		spaceDeviceName: strings.ToLower(spaceDeviceName),
 		spaceNodes:      spaceNodes,
 
-		nc: network.NewNetworkContext(),
+		nc: nc,
 
 		splitDestinationIPs: []string{},
 	}
@@ -81,7 +91,7 @@ func NewTailscaleClient(
 	// std ouput destinations
 	cli.Stdout = tsc
 	cli.Stderr = tsc
-	return tsc
+	return tsc, nil
 }
 
 func (tsc *TailscaleClient) AddSplitDestinations(destinations []string) {
