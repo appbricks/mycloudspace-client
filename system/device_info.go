@@ -16,7 +16,7 @@ var (
 func GetDeviceType() string {
 	if len(deviceType) == 0 {
 		select {
-		case deviceType = <- deviceTypeC:
+		case deviceType = <-deviceTypeC:
 		case <-time.After(time.Second):
 			logger.ErrorMessage("system.GetDeviceType(): Timed out waiting to determine system device type.")
 			deviceType = "Unknown"
