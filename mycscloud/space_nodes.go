@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/url"
 	"sort"
+	"strings"
 	"sync"
 
 	"github.com/appbricks/cloud-builder/config"
@@ -114,7 +115,7 @@ func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) error
 
 					// also map host to target
 					if url, _ := url.Parse(endpoint); url != nil {
-						sn.spaceNodeByEndpoint[url.Host] = t
+						sn.spaceNodeByEndpoint[strings.Split(url.Host, ":")[0]] = t
 					}
 				}	
 			} else {
