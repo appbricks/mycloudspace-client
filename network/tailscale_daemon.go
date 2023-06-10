@@ -4,10 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"fmt"
 	"net"
 	"net/netip"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"golang.zx2c4.com/wireguard/wgctrl/wgtypes"
@@ -266,6 +268,12 @@ func (tsd *TailscaleDaemon) ConfigureTLS(host string, tc *tls.Config) error {
 		certPool *x509.CertPool
 	)
 
+	// daemon initializes with defaul tailscale endpoints. ignore 
+	// these as they will be reset when login command is issued
+	if strings.Contains(host, "tailscale") {
+		return nil
+	}
+
 	if space := tsd.spaceNodes.LookupSpaceByEndpoint(host); space != nil {
 
 		logger.DebugMessage(
@@ -297,12 +305,12 @@ func (tsd *TailscaleDaemon) ConfigureTLS(host string, tc *tls.Config) error {
 		return nil
 
 	} else {
-		logger.DebugMessage(
+		logger.ErrorMessage(
 			"TailscaleDaemon.ConfigureTLS(): %s is not a recognized mycs node", 
 			host,
 		)
+		return fmt.Errorf("unable to match mycs node to host name of know space nodes")
 	}
-	return nil
 }
 
 // hook in - tailscale.com/net/netns/netns_darwin_tailscaled.go
