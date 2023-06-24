@@ -145,7 +145,7 @@ func (sn *SpaceNodes) consolidateRemoteAndLocalNodes(config config.Config) error
 
 				// also map host to node
 				if url, _ := url.Parse(endpoint); url != nil {
-					sn.spaceNodeByEndpoint[url.Host] = node
+					sn.spaceNodeByEndpoint[strings.Split(url.Host, ":")[0]] = node
 				}
 			}
 		}
