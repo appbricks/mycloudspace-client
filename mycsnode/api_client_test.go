@@ -45,7 +45,7 @@ var _ = Describe("MyCS Node API Client", func() {
 
 			handler = mockNodeService.NewServiceHandler()
 			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/mycs/authDevice").
+				ExpectPath("/mycs/device/auth").
 				WithCallbackTest(handler.SendAuthResponse)
 
 			_, err := apiClient.Authenticate()
@@ -226,7 +226,7 @@ var _ = Describe("MyCS Node API Client", func() {
 		It("Call the api create a mesh auth key", func() {
 
 			mockNodeService.TestServer.PushRequest().
-				ExpectPath("/mycs/meshDeviceAuthKey").
+				ExpectPath("/mycs/device/meshAuthKey").
 				ExpectMethod("POST").
 				WithCallbackTest(utils_mocks.HandleAuthHeaders(apiClient, createMesgAuthKeyRequest, createMesgAuthKeyResponse))
 

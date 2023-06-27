@@ -23,7 +23,7 @@ func (a *ApiClient) CreateMeshAuthKey(expiresIn int64) (*SpaceMeshConnectInfo, e
 	errorResponse := mycsnode.ErrorResponse{}
 
 	request := &rest.Request{
-		Path: "/mycs/meshDeviceAuthKey",
+		Path: "/mycs/device/meshAuthKey",
 		Headers: rest.NV{
 			"X-Auth-Key": a.AuthIDKey,
 		},

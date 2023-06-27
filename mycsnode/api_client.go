@@ -30,7 +30,7 @@ func NewApiClient(config config.Config, node userspace.SpaceNode) (*ApiClient, e
 		deviceContext.GetDeviceIDKey(),
 		device.RSAPrivateKey,
 		node,
-		"/mycs/authDevice",
+		"/mycs/device/auth",
 	); err != nil {
 		return nil, err
 	}
