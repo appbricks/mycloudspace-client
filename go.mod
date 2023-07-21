@@ -17,8 +17,8 @@ replace github.com/hashicorp/terraform-config-inspect => ../../mevansam/terrafor
 replace tailscale.com => ../tailscale
 
 require (
-	github.com/appbricks/cloud-builder v0.0.3
-	github.com/appbricks/mycloudspace-common v0.0.2
+	github.com/appbricks/cloud-builder v0.0.4
+	github.com/appbricks/mycloudspace-common v0.0.3
 	github.com/cloudevents/sdk-go/v2 v2.8.0
 	github.com/hasura/go-graphql-client v0.6.3
 	github.com/lestrrat-go/jwx v1.2.19
