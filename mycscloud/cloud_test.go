@@ -33,7 +33,7 @@ var _ = Describe("Cloud API", func() {
 		testServer, testServerUrl := startTestServer()		
 		// App API client
 		return testServer,
-			mycscloud.NewCloudAPI(api.NewGraphQLClient(testServerUrl, "", cfg))
+			mycscloud.NewCloudAPI(api.NewGraphQLClient(testServerUrl, "", cfg.AuthContext()))
 	}
 
 	It("loads cloud properties to app's config object", func() {
@@ -44,7 +44,7 @@ var _ = Describe("Cloud API", func() {
 			ExpectJSONRequest(mycsCloudPropsRequest).
 			RespondWith(mycsCloudPropsResponse)
 
-		err = cloudAPI.UpdateProperties(cfg)
+		err = cloudAPI.UpdateProperties(cfg.AuthContext())
 		Expect(err).ToNot(HaveOccurred())
 
 		ac := cfg.AuthContext()

@@ -21,7 +21,7 @@ func NewCloudAPI(apiClient *graphql.Client) *CloudAPI {
 }
 
 func (c *CloudAPI) UpdateProperties(
-	config config.Config,
+	authContext config.AuthContext,
 ) error {
 
 	var query struct {
@@ -37,8 +37,7 @@ func (c *CloudAPI) UpdateProperties(
 	}
 	logger.DebugMessage("CloudAPI.UpdateProperties(): mycsCloudProps query returned response: %# v", query)
 
-	ac := config.AuthContext()
-	ac.SetPublicKey(
+	authContext.SetPublicKey(
 		string(query.MyCSCloudProps.PublicKeyID),
 		string(query.MyCSCloudProps.PublicKey),
 	)

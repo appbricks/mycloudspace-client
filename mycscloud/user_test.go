@@ -38,7 +38,7 @@ var _ = Describe("User API", func() {
 		testServer, testServerUrl := startTestServer()		
 		// User API client
 		return testServer,
-			mycscloud.NewUserAPI(api.NewGraphQLClient(testServerUrl, "", cfg))
+			mycscloud.NewUserAPI(api.NewGraphQLClient(testServerUrl, "", cfg.AuthContext()))
 	}
 
 	It("searches for a user", func() {

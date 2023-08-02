@@ -41,7 +41,7 @@ var _ = Describe("App API", func() {
 		testServer, testServerUrl := startTestServer()		
 		// App API client
 		return testServer, 
-			mycscloud.NewAppAPI(api.NewGraphQLClient(testServerUrl, "", cfg))
+			mycscloud.NewAppAPI(api.NewGraphQLClient(testServerUrl, "", cfg.AuthContext()))
 	}
 
 	It("adds an app", func() {

@@ -48,7 +48,7 @@ var _ = Describe("Auth Context", func() {
 
 	It("creates an api client", func() {
 
-		client := api.NewGraphQLClient("http://localhost:9096/", "", cfg)
+		client := api.NewGraphQLClient("http://localhost:9096/", "", cfg.AuthContext())
 		var q struct {
 			Test struct {
 				ID   graphql.ID

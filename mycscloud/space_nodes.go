@@ -76,7 +76,7 @@ func GetSpaceNodes(config config.Config, apiUrl string) (*SpaceNodes, error) {
 	go func() {
 		defer sn.asyncCall.Done()
 
-		spaceAPI := NewSpaceAPI(api.NewGraphQLClient(apiUrl, "", config))
+		spaceAPI := NewSpaceAPI(api.NewGraphQLClient(apiUrl, "", config.AuthContext()))
 		sn.sharedSpaces, sn.asyncCallError = spaceAPI.GetSpaces()
 	}()
 

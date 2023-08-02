@@ -12,11 +12,11 @@ import (
 
 // returns a graphql client for querying
 // the MyCS cloud API service
-func NewGraphQLClient(apiUrl, subUrl string, config config.Config) *graphql.Client {
+func NewGraphQLClient(apiUrl, subUrl string, authContext config.AuthContext) *graphql.Client {
 
 	return graphql.NewClient(apiUrl, &http.Client{
 		Transport: authHeader{
-			idToken:   config.AuthContext().GetToken().Extra("id_token").(string),
+			idToken:   authContext.GetToken().Extra("id_token").(string),
 			transport: http.DefaultTransport,
 		},
 	})

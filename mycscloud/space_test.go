@@ -37,7 +37,7 @@ var _ = Describe("Space API", func() {
 		testServer, testServerUrl = startTestServer()
 		// Space API client
 		return testServer,
-			mycscloud.NewSpaceAPI(api.NewGraphQLClient(testServerUrl, "", cfg))
+			mycscloud.NewSpaceAPI(api.NewGraphQLClient(testServerUrl, "", cfg.AuthContext()))
 	}
 
 	It("adds a space", func() {

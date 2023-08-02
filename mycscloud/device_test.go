@@ -41,7 +41,7 @@ var _ = Describe("Device API", func() {
 		testServer, testServerUrl := startTestServer()		
 		// Device API client
 		return testServer,
-			mycscloud.NewDeviceAPI(api.NewGraphQLClient(testServerUrl, "", cfg))
+			mycscloud.NewDeviceAPI(api.NewGraphQLClient(testServerUrl, "", cfg.AuthContext()))
 			// mycscloud.NewDeviceAPI(api.NewGraphQLClient("https://ss3hvtbnzrasfbevhaoa4mlaiu.appsync-api.us-east-1.amazonaws.com/graphql", "", cfg))
 	}
 
