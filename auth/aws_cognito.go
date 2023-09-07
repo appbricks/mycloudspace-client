@@ -50,8 +50,7 @@ func NewAWSCognitoJWT(serviceConfig api.ServiceConfig, authContext config.AuthCo
 	); err != nil {
 		return nil, err
 	}
-	logger.TraceMessage("JWT Token for logged in user is: %# v", awsJWT.jwtToken)
-
+	
 	return awsJWT, nil
 }
 

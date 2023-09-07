@@ -76,8 +76,11 @@ func (d *DeviceAPI) UpdateDeviceContext(deviceContext config.DeviceContext) erro
 		} `graphql:"authDevice(idKey: $idKey)"`
 	}
 
+	deviceIDKey := deviceContext.GetDeviceIDKey()
+	logger.DebugMessage("DeviceAPI.UpdateDeviceContext(): authDevice query for device id key: %s", deviceIDKey)
+
 	variables := map[string]interface{}{
-		"idKey": graphql.String(deviceContext.GetDeviceIDKey()),
+		"idKey": graphql.String(deviceIDKey),
 	}
 	if err := d.apiClient.Query(context.Background(), &query, variables); err != nil {
 		logger.ErrorMessage("DeviceAPI.UpdateDeviceContext(): authDevice query returned an error: %s", err.Error())
@@ -173,7 +176,7 @@ func (d *DeviceAPI) UpdateDeviceContext(deviceContext config.DeviceContext) erro
 		if guestUser, exists = deviceContext.GetGuestUser(deviceContext.GetLoggedInUserName()); !exists {
 			logger.ErrorMessage(
 				"DeviceAPI.UpdateDeviceContext(): authDevice query returned a guest user \"%s\" that was not found in the device context",
-				guestUser.UserID,
+				deviceContext.GetLoggedInUserName(),
 			)
 			return fmt.Errorf("invalid device context")
 		}

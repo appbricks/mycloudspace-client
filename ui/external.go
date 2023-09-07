@@ -1,8 +1,21 @@
 package ui
 
+import "context"
+
 type UI interface {
 	// returns a handle to a UI message writer
 	NewUIMessage(title string) Message
+	// returns a handle to a cancellable UI message writer
+	NewUIMessageWithCancel(title string, cancel context.CancelFunc) Message
+	
+	// shows an error message
+	ShowErrorMessage(message string)
+	// shows an information message
+	ShowInfoMessage(title, message string)
+	// shows an note message
+	ShowNoteMessage(title, message string)
+	// shows an notice message
+	ShowNoticeMessage(title, message string)
 }
 
 // UI defines an interface for interacting with the user
@@ -29,7 +42,12 @@ type Message interface {
 	WriteText(text string)
 
 	// show messages in the buffer
-	ShowMessage()
+	ShowMessageWithInput(defaultInput string, handleInput func(*string))	
+	ShowMessageWithSecureInput(handleInput func(*string))
+	ShowMessageWithSecureVerifiedInput(handleInput func(*string))
+	ShowMessageWithYesNoInput(handleInput func(bool))
+	ShowMessageWithFileInput(handleInput func(*string))
+
 	// dismiss a message that was previously shown
 	DismissMessage()
 

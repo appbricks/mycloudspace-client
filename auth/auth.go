@@ -1,6 +1,7 @@
 package auth
 
 import (
+	"bytes"
 	"context"
 	"encoding/base64"
 	"fmt"
@@ -13,9 +14,11 @@ import (
 
 	"github.com/appbricks/cloud-builder/auth"
 	"github.com/appbricks/cloud-builder/config"
+	"github.com/appbricks/cloud-builder/userspace"
 	"github.com/appbricks/mycloudspace-client/api"
 	"github.com/appbricks/mycloudspace-client/mycscloud"
 	"github.com/appbricks/mycloudspace-client/ui"
+	"github.com/mevansam/goutils/crypto"
 	"github.com/mevansam/goutils/logger"
 )
 
@@ -37,7 +40,7 @@ func Authenticate(
 	ctx context.Context,
 	serviceConfig api.ServiceConfig, 
 	authContext config.AuthContext, 
-	ui ui.UI, 
+	appUI ui.UI, 
 	loginMessages ...string,
 ) AsyncAuthRet {
 
@@ -48,9 +51,9 @@ func Authenticate(
 		authUrl string
 	)
 
-	authRet := make(AsyncAuthRet)
+	authRet := make(AsyncAuthRet, 1)
 
-	authn := auth.NewAuthenticator(
+	authn, cancelFunc := auth.NewAuthenticator(
 		ctx,
 		authContext,
 		&oauth2.Config{
@@ -71,35 +74,31 @@ func Authenticate(
 		return authRet
 	}
 	if !isAuthenticated {
-		uh := ui.NewUIMessage("Login to My Cloud Space")
+		uh := appUI.NewUIMessageWithCancel("Login to My Cloud Space", cancelFunc)
 
 		if len(loginMessages) > 0 {
-			fmt.Println()
 			uh.WriteNoticeMessage(loginMessages[0])
 		}
 		if authUrl, err = authn.StartOAuthFlow(callbackPorts, logoRequestHandler); err != nil {
-			logger.DebugMessage("ERROR! Authentication failed: %s", err.Error())	
+			logger.ErrorMessage("Authentication failed: %s", err.Error())	
 			authRet <-AuthRet{err}
 			return authRet
 		}
 		if err = openBrowser(authUrl); err != nil {
 			logger.DebugMessage("ERROR! Unable to open browser for authentication: %s", err.Error())
 
-			fmt.Println()
 			uh.WriteNoteMessage(
 				"You need to open a browser window and navigate to the following URL in order to " +
 				"login to your My Cloud Space account. Once authenticated the MyCS app will be ready " +
 				"for use.",
 			)
-			uh.WriteText(fmt.Sprintf("\n=> %s\n\n", authUrl))
+			uh.WriteText(fmt.Sprintf("\n=> %s", authUrl))
 
 		} else {
-			fmt.Println()
 			uh.WriteNoteMessage(
 				"You have been directed to a browser window from which you need to login to your " +
 				"My Cloud Space account. Once authenticated the MyCS app will be ready for use.",
 			)
-			fmt.Println()
 		}
 		
 		p := uh.ShowMessageWithProgressIndicator(
@@ -176,7 +175,7 @@ func GetAuthenticatedToken(
 	serviceConfig api.ServiceConfig,
 	appConfig config.Config, 
 	forceLogin bool, 
-	ui ui.UI, 
+	appUI ui.UI, 
 	loginMessages ...string,
 ) AsyncTokenRet {
 
@@ -185,7 +184,7 @@ func GetAuthenticatedToken(
 
 		awsAuth *AWSCognitoJWT
 	)
-	tokenRet := make(AsyncTokenRet)
+	tokenRet := make(AsyncTokenRet, 1)
 	authContext := appConfig.AuthContext()
 	if forceLogin {
 		if err = authContext.Reset(); err != nil {
@@ -194,9 +193,10 @@ func GetAuthenticatedToken(
 		}
 	}
 
-	authRet := Authenticate(ctx, serviceConfig, authContext, ui, loginMessages...)
+	authRet := Authenticate(ctx, serviceConfig, authContext, appUI, loginMessages...)
 	go func() {
-		if err = (<-authRet).Error; err != nil {				
+		defer close(authRet)
+		if err = (<-authRet).Error; err != nil {
 			logger.DebugMessage("ERROR! Authentication failed: %s", err.Error())	
 			tokenRet <-TokenRet{nil, err}
 			return
@@ -210,135 +210,302 @@ func GetAuthenticatedToken(
 			tokenRet <-TokenRet{nil, err}
 			return
 		}
+		logger.TraceMessage("JWT Token for logged in user is: %# v", awsAuth.jwtToken)
 		tokenRet <-TokenRet{awsAuth, err}
 	}()
 
 	return tokenRet
 }
 
-// func AuthorizeDeviceAndUser(config config.Config) error {
+func ValidateAuthenticatedToken(
+	serviceConfig api.ServiceConfig,
+	appConfig config.Config, 
+) (bool, error) {
 
-// 	var (
-// 		err error
+	var (
+		err error
 
-// 		awsAuth *AWSCognitoJWT
+		isAuthenticated bool
+		awsAuth         *AWSCognitoJWT
+	)
 
-// 		user *userspace.User
+	authContext := appConfig.AuthContext()
+	deviceContext := appConfig.DeviceContext()
 
-// 		userID, 
-// 		userName,
-// 		ownerUserID string
-// 		ownerConfig []byte
-
-// 		ownerKey *crypto.RSAKey
-
-// 		requestAccess bool
-// 	)
-
-// 	deviceAPI := mycscloud.NewDeviceAPI(api.NewGraphQLClient(cbcli_config.AWS_USERSPACE_API_URL, "", config))
-// 	deviceContext := config.DeviceContext()
-
-// 	// validate and parse JWT token
-// 	if awsAuth, err = NewAWSCognitoJWT(config); err != nil {
-// 		return err
-// 	}
-// 	userID = awsAuth.UserID()
-// 	userName = awsAuth.Username()
-
-// 	// authenticate device and user
-// 	if err = deviceAPI.UpdateDeviceContext(deviceContext); err != nil {
-
-// 		errStr := err.Error()
-// 		if errStr == "unauthorized(pending)" {
-// 			fmt.Println()
-// 			cbcli_utils.ShowNoticeMessage("User \"%s\" is not authorized to use this device. A request to grant access to this device is still pending.", userName)
-
-// 		} else if errStr == "unauthorized" {
-// 			fmt.Println()
-// 			cbcli_utils.ShowNoticeMessage("User \"%s\" is not authorized to use this device.", userName)			
-// 			fmt.Println()
+	authn, _ := auth.NewAuthenticator(
+		context.Background(),
+		authContext,
+		&oauth2.Config{
+			ClientID:     serviceConfig.CliendID,
+			ClientSecret: serviceConfig.ClientSecret,
+			Scopes:       []string{"openid", "profile"},
 			
-// 			requestAccess = cbcli_utils.GetYesNoUserInput("Do you wish to request access to this device : ", false)			
-// 			if (requestAccess) {
-// 				if user, _ = deviceContext.GetGuestUser(userName); user == nil {
-// 					if user, err = deviceContext.NewGuestUser(userID, userName); err != nil {
-// 						return err
-// 					}
-// 				} else {
-// 					user.Active = false
-// 				}
-// 				if _, _, err = deviceAPI.AddDeviceUser(deviceContext.GetDevice().DeviceID, ""); err != nil {
-// 					return err
-// 				}
-// 				fmt.Println()
-// 				cbcli_utils.ShowNoticeMessage("A request to grant user \"%s\" access to this device has been submitted.", user.Name)
-
-// 			} else {
-// 				return fmt.Errorf("access request declined")
-// 			}
+			Endpoint: oauth2.Endpoint{
+				AuthURL:  serviceConfig.AuthURL,
+				TokenURL: serviceConfig.TokenURL,
+			},
+		}, 
+		callBackHandler(),
+	)
+	if isAuthenticated, err = authn.IsAuthenticated(); err == nil {
+		if awsAuth, err = NewAWSCognitoJWT(serviceConfig, authContext); 
+			err == nil && awsAuth.Username() != deviceContext.GetLoggedInUserName() {
 			
-// 			return nil
-// 		} else {
-// 			return err
-// 		}
-// 	}
+			if err = appConfig.SetLoggedInUser(awsAuth.UserID(), awsAuth.Username()); err != nil {
+				logger.ErrorMessage("Failed to set logged in user: %s", err.Error())	
+				isAuthenticated = false
+			}
 
-// 	// ensure that the device has an owner
-// 	ownerUserID, isOwnerSet := deviceContext.GetOwnerUserID()
-// 	if !isOwnerSet {
-// 		fmt.Println()
-// 		cbcli_utils.ShowCommentMessage(
-// 			"This Cloud Builder CLI device has not been initialized. You can do this by running " +
-// 			"the \"cb init\" command and claiming the device by logging in as the device owner.",
-// 		)
-// 		fmt.Println()
-// 		os.Exit(1)
-// 	}
+		} else {
+			logger.ErrorMessage("Failed to extract auth token: %s", err.Error())	
+			isAuthenticated = false
+		}
+	}
+	return isAuthenticated, err
+}
 
-// 	// if logged in user is the owner ensure 
-// 	// owner is intialized and config is latest
-// 	if userID == ownerUserID {
-// 		owner := deviceContext.GetOwner()
+func Login(
+	serviceConfig api.ServiceConfig,
+	appConfig config.Config,
+	appUI ui.UI, 
+	handleLoginResult func(err error),
+) {
 
-// 		if len(owner.RSAPrivateKey) == 0 {
-// 			fmt.Println()
-
-// 			line := liner.NewLiner()
-// 			line.SetCtrlCAborts(true)
-// 			if ownerKey, err = ImportPrivateKey(line); err != nil {
-// 				cbcli_utils.ShowErrorAndExit(
-// 					fmt.Sprintf("User's private key import failed with error: %s", err.Error()),
-// 				)
-// 			}
-// 			if err = owner.SetKey(ownerKey); err != nil {
-// 				cbcli_utils.ShowErrorAndExit("Failed to validate provided private key with user's known public key.")
-// 			}		
-// 		}
-// 		if config.GetConfigAsOf() < awsAuth.ConfigTimestamp() {
-// 			userAPI := mycscloud.NewUserAPI(api.NewGraphQLClient(cbcli_config.AWS_USERSPACE_API_URL, "", config))
+	tokenRet := GetAuthenticatedToken(context.Background(), serviceConfig,appConfig, false, appUI)
 	
-// 			if ownerConfig, err = userAPI.GetUserConfig(owner); err != nil {
-// 				return err
-// 			}
-// 			if err = config.TargetContext().Reset(); err != nil {
-// 				cbcli_utils.ShowErrorAndExit(
-// 					fmt.Sprintf(
-// 						"Failed to reset current config as a change was detected: %s", 
-// 						err.Error(),
-// 					),
-// 				)
-// 			}
-// 			if err = config.TargetContext().Load(bytes.NewReader(ownerConfig)); err != nil {
-// 				cbcli_utils.ShowErrorAndExit(
-// 					fmt.Sprintf(
-// 						"Failed to reset load updated config: %s", 
-// 						err.Error(),
-// 					),
-// 				)
-// 			}
-// 			config.SetConfigAsOf(awsAuth.ConfigTimestamp())
-// 		}
-// 	} 
+	go func() {
 
-// 	return nil
-// }
+		var (
+			err error
+		)
+
+		defer close(tokenRet)
+		token := <-tokenRet
+
+		// always call handler on exit
+		defer func() {
+			if err != nil {
+				if resetErr := appConfig.AuthContext().Reset(); resetErr != nil {
+					logger.ErrorMessage(
+						"Failed to reset auth context as device authorization failed: %s", 
+						resetErr.Error(),
+					)
+				}	
+			}			
+			handleLoginResult(err)
+		}()
+
+		if err = token.Error; err == nil {
+			err = AuthorizeDeviceAndUser(serviceConfig, appConfig, appUI);
+		}		
+	}()
+}
+
+func Logout(
+	serviceConfig api.ServiceConfig,
+	appConfig config.Config,
+) error {
+
+	var (
+		err error
+
+		awsAuth *AWSCognitoJWT
+	)
+
+	authContext := appConfig.AuthContext()
+	if authContext.IsLoggedIn() {
+		if awsAuth, err = NewAWSCognitoJWT(serviceConfig, authContext); err != nil {
+			return err
+		}
+	}
+	if err = authContext.Reset(); err != nil {
+		return err
+	}
+	appConfig.DeviceContext().SetLoggedInUser("", "")
+	
+	if awsAuth != nil {
+		logger.DebugMessage("User \"%s\" has been logged out.", awsAuth.Username())
+	} else {
+		logger.DebugMessage("Logout complete.")
+	}
+	return nil
+}
+
+func AuthorizeDeviceAndUser(
+	serviceConfig api.ServiceConfig,
+	appConfig config.Config,
+	appUI ui.UI, 
+) error {
+
+	var (
+		err, authErr error
+
+		awsAuth *AWSCognitoJWT
+
+		user *userspace.User
+
+		userID, 
+		userName,
+		ownerUserID string
+		ownerConfig []byte
+
+		isOwnerSet bool
+
+		keyFileName, keyFilePassphrase *string
+
+		ownerKey *crypto.RSAKey
+	)
+
+	defer func() {
+		if authErr != nil {
+			appUI.ShowErrorMessage(fmt.Sprintf("Device authorization failed: %s", authErr.Error()))
+		}
+	}()
+
+	authContext := appConfig.AuthContext()
+	gqlClient := api.NewGraphQLClient(serviceConfig.ApiURL, "", authContext)
+
+	deviceAPI := mycscloud.NewDeviceAPI(gqlClient)
+	deviceContext := appConfig.DeviceContext()
+
+	// ensure that the device has an owner
+	if ownerUserID, isOwnerSet = deviceContext.GetOwnerUserID(); !isOwnerSet {
+		err = fmt.Errorf("no device owner configured")
+		return err
+	}
+
+	// validate and parse JWT token
+	if awsAuth, err = NewAWSCognitoJWT(serviceConfig, authContext); err != nil {
+		return err
+	}
+	userID = awsAuth.UserID()
+	userName = awsAuth.Username()
+
+	// authenticate device and user
+	if authErr = deviceAPI.UpdateDeviceContext(deviceContext); authErr != nil {
+		err = authErr
+		
+		authErrStr := authErr.Error()
+		if authErrStr == "unauthorized(pending)" {
+			appUI.ShowNoticeMessage(
+				"Device Access",
+				fmt.Sprintf("User \"%s\" is not authorized to use this device. A request to grant access to this device is still pending.", userName),
+			)
+			authErr = nil
+
+		} else if authErrStr == "unauthorized" {
+			requestAccess := make(chan bool)
+			defer close(requestAccess)
+
+			uh := appUI.NewUIMessage("Device Access")
+			uh.WriteNoticeMessage(
+				fmt.Sprintf(
+					"User \"%s\" is not authorized to use this device.\n\n" +
+					"Do you wish to request access to this device", userName,
+				),
+			)
+			uh.ShowMessageWithYesNoInput(func(yes bool) {
+				requestAccess <-yes
+			})
+			if <-requestAccess {
+				if user, _ = deviceContext.GetGuestUser(userName); user == nil {
+					if user, err = deviceContext.NewGuestUser(userID, userName); err != nil {
+						err = fmt.Errorf("failed to add new guest user to device: %s", err.Error())
+						return err
+					}
+				} else {
+					user.Active = false
+				}
+				if _, _, err = deviceAPI.AddDeviceUser(deviceContext.GetDevice().DeviceID, ""); err != nil {
+					err = fmt.Errorf("failed to add new guest user to device: %s", err.Error())
+					return err
+				}
+				appUI.ShowNoteMessage(
+					"Device Access",
+					fmt.Sprintf("A request to grant user \"%s\" access to this device has been submitted.", user.Name),
+				)
+				authErr = nil
+
+			} else {
+				err = fmt.Errorf("access request declined")
+			}
+		}
+
+		if resetErr := authContext.Reset(); resetErr != nil {
+			logger.ErrorMessage(
+				"Failed to reset auth context as device authorization failed: %s", 
+				resetErr.Error(),
+			)
+		}
+		return err
+	}
+
+	// if logged in user is the owner ensure 
+	// owner is initialized and config is latest
+	if userID == ownerUserID {
+		owner := deviceContext.GetOwner()
+
+		if len(owner.RSAPrivateKey) == 0 {
+			input := make(chan *string, 1)
+			defer close(input)
+			
+			uh := appUI.NewUIMessage("Open Device Owner's Key")			
+			uh.ShowMessageWithFileInput(func(keyFileName *string) {
+				input <-keyFileName
+			})
+			if keyFileName = <-input; keyFileName == nil {
+				err = fmt.Errorf("no key file provided")
+				return err
+			}
+
+			uh = appUI.NewUIMessage("Key File Passphrase")
+			uh.WriteInfoMessage("Enter the passphrase needed to open the key file.")
+			uh.ShowMessageWithSecureInput(func(keyFilePassphrase *string) {
+				input <-keyFilePassphrase
+			})
+			if keyFilePassphrase = <-input; keyFilePassphrase == nil {
+				err = fmt.Errorf("key file needs a passphrase")
+				return err
+			}
+
+			if ownerKey, err = crypto.NewRSAKeyFromFile(*keyFileName, []byte(*keyFilePassphrase)); err == nil {
+				err = owner.SetKey(ownerKey, false)				
+			}
+			if err != nil {
+				err = fmt.Errorf("failed to load user's private key: %s", err.Error())
+				return err
+			}
+		}
+		
+		if targetContext := appConfig.TargetContext(); targetContext != nil {
+			if appConfig.GetConfigAsOf() < awsAuth.ConfigTimestamp() {
+				userAPI := mycscloud.NewUserAPI(gqlClient)
+		
+				if ownerConfig, err = userAPI.GetUserConfig(owner); err != nil {
+					err = fmt.Errorf(
+						"failed to sync target context with remote: %s", 
+						err.Error(),
+					)
+					return err
+				}
+				if err = appConfig.TargetContext().Reset(); err != nil {
+					err = fmt.Errorf(
+						"failed to sync target context with remote: %s", 
+						err.Error(),
+					)
+					return err
+				}
+				if err = appConfig.TargetContext().Load(bytes.NewReader(ownerConfig)); err != nil {
+					err = fmt.Errorf(
+						"failed to sync target context with remote: %s", 
+						err.Error(),
+					)
+					return err
+				}
+				appConfig.SetConfigAsOf(awsAuth.ConfigTimestamp())
+			}
+		}
+	} 
+
+	return nil
+}
