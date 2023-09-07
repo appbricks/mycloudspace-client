@@ -107,7 +107,7 @@ var _ = Describe("User API", func() {
 		user := &userspace.User{
 			UserID: "test user id x",
 		}
-		err = user.SetKey(key)
+		err = user.SetKey(key, false)
 		Expect(err).ToNot(HaveOccurred())
 
 		configData, err := user.EncryptConfig([]byte("test config data"))
@@ -181,7 +181,7 @@ var _ = Describe("User API", func() {
 		user := &userspace.User{
 			UserID: "test user id",
 		}
-		err = user.SetKey(key)
+		err = user.SetKey(key, false)
 		Expect(err).ToNot(HaveOccurred())
 
 		timestamp := time.Now().UnixMilli()		
