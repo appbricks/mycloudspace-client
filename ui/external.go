@@ -41,7 +41,7 @@ type Message interface {
 	// write some text without any formatting applied
 	WriteText(text string)
 
-	// show messages in the buffer
+	// show message with user input
 	ShowMessageWithInput(defaultInput string, handleInput func(*string))	
 	ShowMessageWithSecureInput(handleInput func(*string))
 	ShowMessageWithSecureVerifiedInput(handleInput func(*string))

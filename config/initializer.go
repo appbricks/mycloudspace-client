@@ -38,10 +38,6 @@ type ConfigInitializer struct {
 
 	// new owner/device details
 	newOwnerAPIClient *graphql.Client
-	newDevice         *userspace.Device
-	newUserID         string
-	newUserName       string
-	newDeviceName     string
 
 	updateUserKey bool
 
@@ -154,6 +150,8 @@ func (ci *ConfigInitializer) ResetDeviceOwner(
 
 			newAppConfig cb_config.Config
 
+			newUserName, 
+			newDeviceName   string
 			userNeedsNewKey bool
 		)
 
@@ -164,18 +162,13 @@ func (ci *ConfigInitializer) ResetDeviceOwner(
 			}
 			if err != nil {
 				ci.newOwnerAPIClient = nil
-				ci.newDevice = nil
-				ci.newUserID = ""
-				ci.newUserName = ""
-				ci.newDeviceName = ""
-				ci.resetConfig = !ci.appConfig.Initialized()
-				userNeedsNewKey = false
+				ci.resetConfig = !ci.appConfig.Initialized()				
 			} else {
 				ci.appConfig = newAppConfig
 			}
 			handleAuthResult(
-				ci.newUserName, 
-				ci.newDeviceName,
+				newUserName, 
+				newDeviceName,
 				userNeedsNewKey, 
 				err,
 			)
@@ -244,7 +237,7 @@ func (ci *ConfigInitializer) ResetDeviceOwner(
 			return
 		}
 
-		if err = ci.resetDeviceOwner(token.AWSAuth, newAppConfig); err != nil {
+		if newUserName, newDeviceName, err = ci.resetDeviceOwner(token.AWSAuth, newAppConfig); err != nil {
 			ci.appUI.ShowErrorMessage(err.Error())
 			return
 		}
@@ -256,40 +249,45 @@ func (ci *ConfigInitializer) ResetDeviceOwner(
 func (ci *ConfigInitializer) resetDeviceOwner(
 	awsAuth *auth.AWSCognitoJWT,
 	newAppConfig cb_config.Config,
-) error {
+) (string, string, error) {
 
 	var (
 		err error
 
-		owner *userspace.User
+		userID string
+		owner  *userspace.User
+		device *userspace.Device
+
+		newUserName,
+		newDeviceName string
 	)
 	
 	deviceContext := newAppConfig.DeviceContext()
-	ci.newUserName = awsAuth.Username()
-	ci.newUserID = awsAuth.UserID()
+	newUserName = awsAuth.Username()
+	userID = awsAuth.UserID()
 
 	// create device owner user
-	if owner, err = deviceContext.NewOwnerUser(ci.newUserID, ci.newUserName); err != nil {
-		return fmt.Errorf("failed to initialize new device owner: %s", err.Error())	
+	if owner, err = deviceContext.NewOwnerUser(userID, newUserName); err != nil {
+		return "", "", fmt.Errorf("failed to initialize new device owner: %s", err.Error())	
 	}
 	// retrieve the owner user details
 	ci.newOwnerAPIClient = api.NewGraphQLClient(ci.serviceConfig.ApiURL, "", newAppConfig.AuthContext())
 	userAPI := mycscloud.NewUserAPI(ci.newOwnerAPIClient)
 	if _, err = userAPI.GetUser(owner); err != nil {
-		return fmt.Errorf("failed to retrieve user '%s' from MyCS cloud: %s", owner.Name, err.Error())
+		return "", "", fmt.Errorf("failed to retrieve user '%s' from MyCS cloud: %s", owner.Name, err.Error())
 	}
 	// create new device to associate with the owner
-	if ci.newDevice, err = deviceContext.NewDevice(); err != nil {
-		return fmt.Errorf("failed to initiaize new device for user '%s': %s", owner.Name, err.Error())	
+	if device, err = deviceContext.NewDevice(); err != nil {
+		return "", "", fmt.Errorf("failed to initiaize new device for user '%s': %s", owner.Name, err.Error())	
 	}
-	if ci.newDevice.Name == "" {
-		ci.newDeviceName = owner.Name + "-device"
+	if device.Name == "" {
+		newDeviceName = owner.Name + "-device"
 	} else {
-		ci.newDeviceName = ci.newDevice.Name
+		newDeviceName = device.Name
 	}
 	ci.resetConfig = true
 	
-	return nil
+	return newUserName, newDeviceName, nil
 }
 
 func (ci *ConfigInitializer) LoadDeviceOwnerKey(
